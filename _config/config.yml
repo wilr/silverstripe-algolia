@@ -1,6 +1,5 @@
 ---
 Name: silverstripe-algolia
-After: 'framework/*','cms/*'
 ---
 SilverStripe\SiteConfig\SiteConfig:
   extensions:
