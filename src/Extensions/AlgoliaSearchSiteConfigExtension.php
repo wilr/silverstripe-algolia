@@ -10,7 +10,7 @@ use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\DataExtension;
 
-class AlgoliaSearchSiteConfigExtension extends DataExtension
+class AlgoliaSiteConfigExtension extends DataExtension
 {
     private static $db = [
         'adminAPIKey' => 'Varchar(150)',

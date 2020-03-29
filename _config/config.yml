@@ -3,12 +3,12 @@ Name: silverstripe-algolia
 ---
 SilverStripe\SiteConfig\SiteConfig:
   extensions:
-   - Wilr\SilverStripe\Algolia\AlgoliaSiteConfigExtension
+   - Wilr\SilverStripe\Algolia\Extensions\AlgoliaSiteConfigExtension
 
 SilverStripe\CMS\Controllers\ContentController:
   extensions:
-    - Wilr\SilverStripe\Algolia\AlgoliaSiteConfigExtension
+    - Wilr\SilverStripe\Algolia\Extensions\AlgoliaControllerExtension
 
 SilverStripe\CMS\Model\SiteTree:
   extensions:
-    - Wilr\SilverStripe\Algolia\Extensions\SiteTreeExtension
+    - Wilr\SilverStripe\Algolia\Extensions\AlgoliaSiteTreeExtension

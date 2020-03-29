@@ -8,12 +8,12 @@ use SilverStripe\Forms\LiteralField;
 use SilverStripe\ORM\DataExtension;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
-class SiteTreeExtension extends DataExtension
+class AlgoliaSiteTreeExtension extends DataExtension
 {
     private static $enable_indexer = true;
 
     private static $db = [
-        'AlgoliaIndexed' => 'SS_Datetime'
+        'AlgoliaIndexed' => 'Datetime'
     ];
 
     public function enable_indexer(): bool
