@@ -18,6 +18,9 @@ class AlgoliaControllerExtension extends DataExtension
             'indexNameValue'     => $siteConfig->indexName
         ];
 
-        Requirements::javascriptTemplate('algolia-search/theme/src/js/components/algolia-search/search-config.js', $js_config);
+        Requirements::javascriptTemplate(
+            'wilr/silverstripe-algolia:client/src/js/components/algolia-search/search-config.js',
+            $js_config
+        );
     }
 }
