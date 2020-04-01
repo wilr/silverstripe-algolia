@@ -8,6 +8,8 @@ use SilverStripe\View\ArrayData;
 
 class AlgoliaSearchController extends PageController
 {
+    private static $result_template = 'Page_results';
+
     private static $allowed_actions = [
         'index'
     ];
@@ -17,8 +19,8 @@ class AlgoliaSearchController extends PageController
         $q = $this->request->getVar('Search');
 
         return $this->customise(new ArrayData([
-            'Title' => sprintf('Search results', Convert::raw2att($q)),
+            'Title' => sprintf(_t(__CLASS__.'.Results', 'Search results'), Convert::raw2att($q)),
             'SearchQuery' => $q
-        ]))->renderWith(['Page_results', 'Page']);
+        ]))->renderWith([$this->config()->get('result_template'), 'Page']);
     }
 }

@@ -11,4 +11,4 @@ SilverStripe\CMS\Controllers\ContentController:
 
 SilverStripe\CMS\Model\SiteTree:
   extensions:
-    - Wilr\SilverStripe\Algolia\Extensions\AlgoliaSiteTreeExtension
+    - Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension

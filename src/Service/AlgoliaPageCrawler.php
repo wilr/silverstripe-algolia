@@ -29,6 +29,10 @@ class AlgoliaPageCrawler
 
     public function getMainContent()
     {
+        if (!$this->item instanceof SiteTree) {
+            return '';
+        }
+
         $controller = ModelAsController::controller_for($this->item);
         $page = '';
 
@@ -55,3 +59,4 @@ class AlgoliaPageCrawler
 
         return $output;
     }
+}
