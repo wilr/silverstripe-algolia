@@ -30,7 +30,14 @@ DataObjects
 
 ### Indexing
 
-#### Customising the indexed Fields
+If installing on a existing website run the `AlgoliaReindex` task (via CLI) 
+to import existing pages.
+
+```
+./vendor/bin/sake dev/tasks/AlgoliaReindex
+```
+
+#### Customising the indexed fields
 
 By default all `$db` fields and the title, id fields of any `$has_one`,
 `$has_many` and `$many_many` fields as pushed to the index. To alter this, on
@@ -43,7 +50,7 @@ public function updateAlgoliaAttributes(SilverStripe\ORM\Map $attributes)
 }
 ```
 
-You can also filter the included attributes
+To exclude attributes:
 
 ```php
 public function shouldIncludeAttributeInAlgolia($attribute)
