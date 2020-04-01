@@ -9,6 +9,7 @@
   }],
   "require": {
       "silverstripe/cms": "^4",
+      "symbiote/silverstripe-queuedjobs": "^4.0.0",
       "algolia/algoliasearch-client-php": "^2"
   },
   "require-dev": {
