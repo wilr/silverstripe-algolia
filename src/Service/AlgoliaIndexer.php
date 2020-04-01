@@ -5,11 +5,7 @@ namespace Wilr\SilverStripe\Algolia\Service;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\SiteConfig\SiteConfig;
-use Algolia\AlgoliaSearch\SearchClient;
 use SilverStripe\Core\ClassInfo;
-use SilverStripe\Core\Config\Configurable;
-use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\Map;
@@ -20,10 +16,8 @@ use stdClass;
  * any checking of records should be performed by the caller of these methods as
  * no permission checking is done by this class
  */
-class AlgoliaIndexer
+class AlgoliaIndexer extends AlgoliaService
 {
-    use Configurable;
-    use Injectable;
 
     /**
      * Include rendered markup from the object's `Link` method in the index.
@@ -54,61 +48,6 @@ class AlgoliaIndexer
         'BackLinks', 'ContentReviewUsers', 'ContentReviewGroups', 'RelatedPagesThrough',
         'VirtualPages', 'ReviewLogs',
     ];
-
-    private $apiKey;
-
-    private $applicationID;
-
-    private $indexName;
-
-    private $client;
-
-    /**
-     *
-     */
-    public function __construct()
-    {
-        $siteConfig = SiteConfig::current_site_config();
-
-        $this->apiKey = $siteConfig->adminAPIKey;
-        $this->applicationID = $siteConfig->applicationID;
-        $this->indexName = $siteConfig->indexName;
-    }
-
-    /**
-     * @param string $indexName
-     *
-     * @return $this
-     */
-    public function setIndexName($indexName)
-    {
-        $this->indexName = $indexName;
-
-        return $this;
-    }
-
-    /**
-     * @return \Algolia\AlgoliaSearch\SearchClient
-     */
-    public function getClient()
-    {
-        if (!$this->client) {
-            $this->client = SearchClient::create(
-                $this->applicationID,
-                $this->apiKey
-            );
-        }
-
-        return $this->client;
-    }
-
-    /**
-     * @return \Algolia\AlgoliaSearch\SearchIndex
-     */
-    public function initIndex()
-    {
-        return $this->getClient()->initIndex($this->indexName);
-    }
 
     /**
      * Add the provided item to the Algolia index.
