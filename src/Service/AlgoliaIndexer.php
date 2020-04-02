@@ -6,6 +6,7 @@ use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Config\Configurable;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\Map;
@@ -17,8 +18,9 @@ use stdClass;
  * any checking of records should be performed by the caller of these methods as
  * no permission checking is done by this class
  */
-class AlgoliaIndexer extends AlgoliaService
+class AlgoliaIndexer
 {
+    use Configurable;
 
     /**
      * Include rendered markup from the object's `Link` method in the index.
@@ -47,7 +49,7 @@ class AlgoliaIndexer extends AlgoliaService
      */
     public function indexItem($item)
     {
-        $searchIndexes = $this->initIndexes($item);
+        $searchIndexes = $this->getService()->initIndexes($item);
         $fields = $this->exportAttributesFromObject($item);
 
         foreach ($searchIndexes as $searchIndex) {
@@ -55,6 +57,11 @@ class AlgoliaIndexer extends AlgoliaService
         }
 
         return $this;
+    }
+
+    public function getService()
+    {
+        return Injector::inst()->get(AlgoliaService::class);
     }
 
     /**
@@ -66,7 +73,7 @@ class AlgoliaIndexer extends AlgoliaService
      */
     public function indexItems($items)
     {
-        $searchIndexes = $this->initIndexes($items->first());
+        $searchIndexes = $this->getService()->initIndexes($items->first());
         $data = [];
 
         foreach ($items as $item) {
@@ -193,9 +200,9 @@ class AlgoliaIndexer extends AlgoliaService
      * @param string $itemClass
      * @param int $itemId
      */
-    public function deleteObject($itemClass, $itemId)
+    public function deleteItem($itemClass, $itemId)
     {
-        $searchIndexes = $this->initIndexes($itemClass);
+        $searchIndexes = $this->getService()->initIndexes($itemClass);
         $key =  strtolower($itemClass . '.'. $itemId);
 
         foreach ($searchIndexes as $searchIndex) {
@@ -226,7 +233,7 @@ class AlgoliaIndexer extends AlgoliaService
     {
         $id = $this->generateUniqueID($item);
 
-        $indexes = $this->initIndexes($item);
+        $indexes = $this->getService()->initIndexes($item);
 
         foreach ($indexes as $index) {
             $output = $index->getObject($id);
@@ -246,12 +253,18 @@ class AlgoliaIndexer extends AlgoliaService
     {
         $config = $this->config('index_class_mapping');
 
-        foreach ($config as $indexName => $data) {
+        foreach ($config as $index => $data) {
+            $indexName = $this->getService()->environmentizeIndex($index);
+
             if (isset($data['indexSettings'])) {
-                $index = $this->getClient()->initIndex($indexName);
+                $index = $this->getService()->getClient()->initIndex($indexName);
 
                 if ($index) {
-                    $index->setSettings($data);
+                    try {
+                        $index->setSettings($data);
+                    } catch (Exception $e) {
+                        Injector::inst()->create(LoggerInterface::class)->error($e);
+                    }
                 }
             }
         }

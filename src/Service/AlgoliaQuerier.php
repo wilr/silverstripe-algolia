@@ -3,6 +3,7 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Exception;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\PaginatedList;
 
@@ -11,7 +12,7 @@ use SilverStripe\ORM\PaginatedList;
  *
  *
  */
-class AlgoliaQuerier extends AlgoliaService
+class AlgoliaQuerier
 {
     /**
      * @param string $query
@@ -19,9 +20,12 @@ class AlgoliaQuerier extends AlgoliaService
      *
      * @return PaginatedList
      */
-    public function fetchResults($query, $searchParameters = [])
+    public function fetchResults($selectedIndex, $query, $searchParameters = [])
     {
-        $index = $this->initIndex();
+        $service = Injector::inst()->get(AlgoliaService::class);
+
+        $selectedIndex = $service->environmentizeIndex($selectedIndex);
+        $index = $service->getClient()->initIndex($selectedIndex);
         $results = $index->search($query, $searchParameters);
 
         $records = ArrayList::create();

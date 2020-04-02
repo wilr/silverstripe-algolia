@@ -3,78 +3,45 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\SearchClient;
+use Exception;
+use SilverStripe\Control\Director;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 
 class AlgoliaService
 {
-    use Configurable;
     use Injectable;
 
-    /**
-     * @var string
-     *
-     * @config
-     */
-    private static $admin_api_key;
+    public $adminApiKey = '';
 
-    /**
-     * @var string
-     *
-     * @config
-     */
-    private static $search_api_key;
+    public $searchApiKey = '';
 
-    /**
-     * @var string
-     *
-     * @config
-     */
-    private static $application_id;
+    public $applicationId = '';
 
-    /**
-     * Maps a set of classes to a given index name in Algolia.
-     *
-     * A class can exist in more than one index. For instance, you may wish to have
-     * your entire site under a 'generalSearch' index but also push products to a
-     * special 'productSearch' index. The below link contains good references for
-     * when you may need to do this.
-     *
-     * algolia.com/doc/guides/sending-and-managing-data/prepare-your-data/in-depth/choosing-between-one-or-more-indices/
-     *
-     * Definition should be in the following format
-     *
-     * ```yml
-     * Wilr\SilverStripe\Algolia\Service\AlgoliaService:
-     *  index_class_mapping:
-     *    indexName:
-     *      includeClasses:
-     *          - Page
-     *          - Member
-     *      indexSettings:
-     *          attributesForFaceting:
-     *              - 'filterOnly(ObjectClassName)'
-     * ```
-     *
-     * `includeClasses` must be an array of classnames, `indexSettings` should
-     * follow the format listed on the following link:
-     *
-     * https://www.algolia.com/doc/api-reference/settings-api-parameters/
-     */
-    private static $index_class_mapping = [];
+    public $indexes = [];
 
-    private $client;
+    protected $client;
 
     /**
      * @return \Algolia\AlgoliaSearch\SearchClient
      */
     public function getClient()
     {
+        var_dump($this);
         if (!$this->client) {
+            if (!$this->adminApiKey) {
+                throw new Exception('No adminApiKey configured for '. self::class);
+            }
+
+            if (!$this->applicationId) {
+                throw new Exception('No applicationId configured for '. self::class);
+            }
+
             $this->client = SearchClient::create(
-                $this->applicationID,
-                $this->apiKey
+                $this->applicationId,
+                $this->adminApiKey
             );
         }
 
@@ -94,7 +61,9 @@ class AlgoliaService
         $mapping = $this->config()->get('index_class_mapping');
 
         if (!$item) {
-            return array_keys($mapping);
+            return array_map(function ($indexName) {
+                return $this->environmentizeIndex($indexName);
+            }, array_keys($mapping));
         }
 
         if (is_string($item)) {
@@ -122,9 +91,19 @@ class AlgoliaService
         $output = [];
 
         foreach ($matches as $index) {
-            $output[$index] = $this->getClient()->initIndex($index);
+            $output[$index] = $this->getClient()->initIndex($this->environmentizeIndex($index));
         }
 
         return $output;
+    }
+
+    /**
+     * @param string $indexName
+     *
+     * @return string
+     */
+    public function environmentizeIndex($indexName)
+    {
+        return sprintf("%s_%s", Director::get_environment_type(), $indexName);
     }
 }

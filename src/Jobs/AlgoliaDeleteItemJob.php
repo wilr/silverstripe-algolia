@@ -19,11 +19,10 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
      * @param string $itemClass
      * @param array|int $itemIds
      */
-    public function __construct($key)
+    public function __construct($itemClass, $key)
     {
-        if ($key) {
-            $this->itemID = $key;
-        }
+        $this->itemClass = $itemClass;
+        $this->itemID = $key;
     }
 
 
@@ -72,12 +71,13 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
     {
         try {
             $indexer = Injector::inst()->create(AlgoliaIndexer::class);
-            $indexer->deleteData($this->itemKey);
+            $indexer->deleteData($this->itemClass, $this->itemID);
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
 
         $this->isComplete = true;
+
         return;
     }
 }

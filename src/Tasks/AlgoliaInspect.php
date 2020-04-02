@@ -26,15 +26,20 @@ class AlgoliaInspect extends BuildTask
         }
 
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
+        $indexer->syncSettings();
 
-        echo '### LOCAL FIELDS';
+        echo '### LOCAL FIELDS' . PHP_EOL;
         echo '<pre>';
         print_r($indexer->exportAttributesFromObject($item));
 
-        echo '### REMOTE FIELDS';
+        echo '### REMOTE FIELDS ###' . PHP_EOL;
         print_r($indexer->getObject($item));
 
-        echo '### INDEX SETTINGS';
-        print_r($indexer->initIndex()->getSettings());
+        echo '### INDEX SETTINGS ### '. PHP_EOL;
+        foreach ($item->getAlgoliaIndexes() as $index) {
+            print_r($index->getSettings());
+        }
+
+        echo PHP_EOL . 'Done.' . PHP_EOL;
     }
 }

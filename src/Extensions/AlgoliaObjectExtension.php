@@ -13,6 +13,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
+use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 class AlgoliaObjectExtension extends DataExtension
@@ -151,17 +152,16 @@ class AlgoliaObjectExtension extends DataExtension
     public function removeFromAlgolia()
     {
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
-        $indexer->setItem($this->owner);
 
         if ($this->config()->get('use_queued_indexing')) {
             $key = $indexer->generateUniqueID($this->owner);
 
-            $indexDeleteJob = new AlgoliaDeleteItemJob($key);
+            $indexDeleteJob = new AlgoliaDeleteItemJob(get_class($this->owner), $key);
             QueuedJobService::singleton()->queueJob($indexDeleteJob);
         } else {
 
             try {
-                $indexer->deleteData();
+                $indexer->deleteItem($this);
 
                 $this->touchAlgoliaIndexedDate();
             } catch (Exception $e) {
@@ -178,5 +178,15 @@ class AlgoliaObjectExtension extends DataExtension
         if ($this->owner->indexEnabled()) {
             $this->removeFromAlgolia();
         }
+    }
+
+    /**
+     * @return array
+     */
+    public function getAlgoliaIndexes()
+    {
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+
+        return $indexer->initIndexes($this->owner);
     }
 }
