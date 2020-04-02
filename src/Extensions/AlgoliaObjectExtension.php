@@ -11,9 +11,8 @@ use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
-use Symbiote\QueuedJobs\Jobs\AlgoliaDeleteItemJob;
-use Symbiote\QueuedJobs\Jobs\AlgoliaIndexItemJob;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
+use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 class AlgoliaObjectExtension extends DataExtension
@@ -42,6 +41,9 @@ class AlgoliaObjectExtension extends DataExtension
         return $this->config('enable_indexer') ? true : false;
     }
 
+    /**
+     * @param FieldList
+     */
     public function updateCMSFields(FieldList $fields)
     {
         if ($this->owner->indexEnabled()) {
@@ -49,6 +51,17 @@ class AlgoliaObjectExtension extends DataExtension
                 ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__.'.LastIndexed', 'Last indexed in Algolia'))
             ]);
         }
+    }
+
+    /**
+     * On dev/build ensure that the indexer settings are up to date.
+     */
+    public function requireDefaultRecords()
+    {
+        $indexer = Injector::inst()->create(AlgoliaIndexer::class);
+        $indexer->syncSettings();
+
+        die('Hello');
     }
 
     /**

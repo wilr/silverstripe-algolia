@@ -32,6 +32,9 @@ class AlgoliaInspect extends BuildTask
         print_r($indexer->exportAttributesFromObject($item));
 
         echo '### REMOTE FIELDS';
-        echo 'todo';
+        print_r($indexer->getObject($item));
+
+        echo '### INDEX SETTINGS';
+        print_r($indexer->initIndex()->getSettings());
     }
 }

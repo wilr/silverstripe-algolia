@@ -1,11 +1,10 @@
 <?php
 
-namespace Symbiote\QueuedJobs\Jobs;
+namespace Wilr\Silverstripe\Algolia\Jobs;
 
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataObject;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;

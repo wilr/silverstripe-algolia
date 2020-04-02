@@ -9,6 +9,7 @@ use SilverStripe\Core\ClassInfo;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\Map;
+use SilverStripe\ORM\RelationList;
 use stdClass;
 
 /**
@@ -27,26 +28,10 @@ class AlgoliaIndexer extends AlgoliaService
     private static $include_page_content = true;
 
     /**
-     * Attributes we don't want to add to Algolia. Either because they are
-     * generally useless or because they are 'special' and we use the Special
-     * attribute name e.g `objectID`.
-     *
      * @config
      */
     private static $attributes_blacklisted = [
-        'ID', 'Title', 'LastEdited', 'AlgoliaIndexed', 'Sort', 'ShowInSearch',
-        'NextReviewDate', 'ReviewPeriodDays', 'ShareTokenSalt', 'ContentReviewType'
-    ];
-
-    /**
-     * General relationships that we never want to index.
-     *
-     * @config
-     */
-    private static $relationships_blacklisted = [
-        'FileTracking', 'LinkTracking', 'Parent', 'UnPublishJob', 'PublishJob',
-        'BackLinks', 'ContentReviewUsers', 'ContentReviewGroups', 'RelatedPagesThrough',
-        'VirtualPages', 'ReviewLogs',
+        'ID', 'Title', 'ClassName', 'LastEdited'
     ];
 
     /**
@@ -62,16 +47,18 @@ class AlgoliaIndexer extends AlgoliaService
      */
     public function indexItem($item)
     {
-        $searchIndex = $this->initIndex();
+        $searchIndexes = $this->initIndexes($item);
         $fields = $this->exportAttributesFromObject($item);
 
-        $searchIndex->saveObject($fields->toArray());
+        foreach ($searchIndexes as $searchIndex) {
+            $searchIndex->saveObject($fields->toArray());
+        }
 
         return $this;
     }
 
     /**
-     * Index multiple items at a time.
+     * Index multiple items of the same class at a time.
      *
      * @param DataObject[] $items
      *
@@ -79,14 +66,16 @@ class AlgoliaIndexer extends AlgoliaService
      */
     public function indexItems($items)
     {
-        $searchIndex = $this->initIndex();
+        $searchIndexes = $this->initIndexes($items->first());
         $data = [];
 
         foreach ($items as $item) {
             $data[] = $this->exportAttributesFromObject($item)->toArray();
         }
 
-        $searchIndex->saveObjects($data);
+        foreach ($searchIndexes as $searchIndex) {
+            $searchIndex->saveObjects($data);
+        }
 
         return $this;
     }
@@ -115,57 +104,37 @@ class AlgoliaIndexer extends AlgoliaService
                 Injector::inst()->create(AlgoliaPageCrawler::class, $item)->getMainContent();
         }
 
-        $specs = DataObject::getSchema()->fieldSpecs(get_class($item));
-        $fields = new Map(ArrayList::create());
+        $attributes = new Map(ArrayList::create());
 
         foreach ($toIndex as $k => $v) {
-            $fields->push($k, $v);
+            $attributes->push($k, $v);
         }
 
-        $checkItemShouldInclude = $item->hasMethod('shouldIncludeAttributeInAlgolia');
+        $specs = $item->config()->get('algolia_index_fields');
 
-        foreach ($specs as $k => $v) {
-            if (in_array($k, $this->config()->get('attributes_blacklisted'))) {
-                continue;
-            }
-
-            if ($checkItemShouldInclude && ($item->shouldIncludeAttributeInAlgolia($k) === false)) {
-                continue;
-            }
-
-            try {
-                $obj = $item->dbObject($k);
-
-                if ($obj) {
-                    $fields->push($k, $obj->forTemplate());
+        if ($specs) {
+            foreach ($specs as $attributeName) {
+                if (in_array($attributeName, $this->config()->get('attributes_blacklisted'))) {
+                    continue;
                 }
-            } catch (Exception $e) {
-                Injector::inst()->create(LoggerInterface::class)->error($e);
+
+                $dbField = $item->relObject($attributeName);
+
+                if ($dbField && $dbField->exists()) {
+                    if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
+                        // has-many, many-many, has-one
+                        $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
+                    } else {
+                        // db-field
+                        $attributes->push($attributeName, $dbField->forTemplate());
+                    }
+                }
             }
         }
 
-        if ($manyMany = $item->manyMany()) {
-            foreach ($manyMany as $relationship => $class) {
-                $this->exportAttributesFromRelationship($item, $relationship, $fields);
-            }
-        }
+        $item->invokeWithExtensions('updateAlgoliaAttributes', $attributes);
 
-        if ($hasMany = $item->hasMany()) {
-            foreach ($hasMany as $relationship => $class) {
-                $this->exportAttributesFromRelationship($item, $relationship, $fields);
-            }
-        }
-
-        if ($hasOne = $item->hasOne()) {
-            foreach ($hasOne as $relationship => $class) {
-                $this->exportAttributesFromRelationship($item, $relationship, $fields);
-            }
-        }
-
-
-        $item->invokeWithExtensions('updateAlgoliaAttributes', $fields);
-
-        return $fields;
+        return $attributes;
     }
 
     /**
@@ -178,14 +147,6 @@ class AlgoliaIndexer extends AlgoliaService
      */
     public function exportAttributesFromRelationship($item, $relationship, $attributes)
     {
-        if (in_array($relationship, $this->config()->get('relationships_blacklisted'))) {
-            return;
-        }
-
-        if ($item->hasMethod('shouldIncludeRelationshipInAlgolia') && $item->shouldIncludeRelationshipInAlgolia($relationship) === false) {
-            return;
-        }
-
         try {
             $data = [];
 
@@ -234,10 +195,12 @@ class AlgoliaIndexer extends AlgoliaService
      */
     public function deleteObject($itemClass, $itemId)
     {
-        $searchIndex = $this->initIndex();
+        $searchIndexes = $this->initIndexes($itemClass);
         $key =  strtolower($itemClass . '.'. $itemId);
 
-        $searchIndex->deleteObject($key);
+        foreach ($searchIndexes as $searchIndex) {
+            $searchIndex->deleteObject($key);
+        }
     }
 
     /**
@@ -252,5 +215,45 @@ class AlgoliaIndexer extends AlgoliaService
     public function generateUniqueID($item)
     {
         return strtolower(get_class($item) . '.'. $item->ID);
+    }
+
+    /**
+     * @param DataObject $item
+     *
+     * @return array
+     */
+    public function getObject($item)
+    {
+        $id = $this->generateUniqueID($item);
+
+        $indexes = $this->initIndexes($item);
+
+        foreach ($indexes as $index) {
+            $output = $index->getObject($id);
+
+            if ($output) {
+                return $output;
+            }
+        }
+    }
+
+    /**
+     * Sync setting from YAML configuration into Algolia.
+     *
+     * This runs automatically on dev/build operations.
+     */
+    public function syncSettings()
+    {
+        $config = $this->config('index_class_mapping');
+
+        foreach ($config as $indexName => $data) {
+            if (isset($data['indexSettings'])) {
+                $index = $this->getClient()->initIndex($indexName);
+
+                if ($index) {
+                    $index->setSettings($data);
+                }
+            }
+        }
     }
 }

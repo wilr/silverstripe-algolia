@@ -1,6 +1,6 @@
 <?php
 
-namespace Symbiote\QueuedJobs\Jobs;
+namespace Wilr\Silverstripe\Algolia\Jobs;
 
 use SilverStripe\ORM\DataObject;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;

@@ -47,7 +47,7 @@ class AlgoliaReindex extends BuildTask
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
 
         echo sprintf(
-            'Found %s pages to index, will export in batches of %s, totalling %s batches%s',
+            'Found %s pages to index, will export in batches of %s, grouped by type. %s',
             $total,
             $batchSize,
             $batchesTotal,
@@ -60,7 +60,7 @@ class AlgoliaReindex extends BuildTask
             return;
         }
 
-        $currentBatch = [];
+        $currentBatches = [];
 
         for ($i = 0; $i < $batchesTotal; $i++) {
             $limitedSize = $items->sort('ID', 'DESC')->limit($batchSize, $i * $batchSize);
@@ -69,6 +69,10 @@ class AlgoliaReindex extends BuildTask
                 $pos++;
 
                 echo '.';
+
+                if ($pos % 50 == 0) {
+                    echo sprintf(' [%s/%s]%s', $pos, $total, PHP_EOL);
+                }
 
                 // fetch the actual instance
                 $instance = DataObject::get_by_id($item->ClassName, $item->ID);
@@ -79,27 +83,32 @@ class AlgoliaReindex extends BuildTask
                     continue;
                 }
 
-                $currentBatch[] = $indexer->exportAttributesFromObject($item)->toArray();
+                $batchKey = get_class($item);
+
+                if (!isset($currentBatches[$batchKey])) {
+                    $currentBatches[$batchKey] = [];
+                }
+
+                $currentBatches[$batchKey] = $indexer->exportAttributesFromObject($item)->toArray();
                 $item->touchAlgoliaIndexedDate();
                 $count++;
 
-                if ($pos % $this->config()->get('batch_size') == 0) {
-                    echo sprintf(' [%s/%s]%s', $pos, $total, PHP_EOL);
+                if (count($currentBatches[$batchKey]) > $batchSize) {
+                    $this->indexBatch($currentBatches[$batchKey]);
 
-                    if (!$this->indexbatch($currentBatch)) {
-                        $errored++;
-                    }
+                    unset($currentBatches[$batchKey]);
 
-                    // clear batch
-                    $currentBatch = [];
-
-                    sleep(1); // rate limit
+                    sleep(1);
                 }
             }
         }
 
-        if (count($currentBatch) > 0) {
-            $this->indexbatch($currentBatch);
+        foreach ($currentBatches as $class => $records) {
+            if (count($currentBatches[$class]) > 0) {
+                $this->indexbatch($currentBatches[$class]);
+
+                sleep(1);
+            }
         }
 
         Debug::message(sprintf(
@@ -128,10 +137,12 @@ class AlgoliaReindex extends BuildTask
      */
     public function indexBatch($items)
     {
-        $index = Injector::inst()->create(AlgoliaIndexer::class)->initIndex();
+        $indexes = Injector::inst()->create(AlgoliaIndexer::class)->initIndexes($items);
 
         try {
-            $index->saveObjects($items);
+            foreach ($indexes as $index) {
+                $index->saveObjects($items);
+            }
 
             return true;
         } catch (Exception $e) {
@@ -140,8 +151,6 @@ class AlgoliaReindex extends BuildTask
             if (Director::isDev()) {
                 Debug::message($e->getMessage());
             }
-
-            var_dump($items);
 
             return false;
         }
