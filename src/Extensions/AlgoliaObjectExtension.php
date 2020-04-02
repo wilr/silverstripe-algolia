@@ -60,8 +60,6 @@ class AlgoliaObjectExtension extends DataExtension
     {
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
         $indexer->syncSettings();
-
-        die('Hello');
     }
 
     /**
