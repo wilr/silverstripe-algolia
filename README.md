@@ -175,6 +175,7 @@ class PageController extends ContentController
         ]
     }
 }
+```
 
 ## :mag: Inspect Object Fields
 
