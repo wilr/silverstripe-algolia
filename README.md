@@ -117,7 +117,7 @@ records.
 Additional fields from the relationship can be indexed via a PHP function
 
 ```php
-public function updateAlgoliaRelationshipAttributes(SilverStripe\ORM\Map $attributes, $related)
+public function updateAlgoliaRelationshipAttributes(\SilverStripe\ORM\Map $attributes, $related)
 {
     $attributes->push('CategoryName', $related->CategoryName);
 }

@@ -9,6 +9,9 @@ use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\FieldType\DBBoolean;
+use SilverStripe\ORM\FieldType\DBDate;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
 use stdClass;
@@ -33,7 +36,7 @@ class AlgoliaIndexer
      * @config
      */
     private static $attributes_blacklisted = [
-        'ID', 'Title', 'ClassName', 'LastEdited'
+        'ID', 'Title', 'ClassName', 'LastEdited', 'Created'
     ];
 
     /**
@@ -102,7 +105,8 @@ class AlgoliaIndexer
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
             'objectClassNameHierachy' => array_values(ClassInfo::ancestry(get_class($item))),
-            'objectLastEdited' => $item->dbObject('LastEdited')->Rfc822(),
+            'objectLastEdited' => $item->dbObject('LastEdited')->getTimestamp(),
+            'objectCreated' => $item->dbObject('Created')->getTimestamp(),
             'objectLink' => str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink())
         ];
 
@@ -110,6 +114,8 @@ class AlgoliaIndexer
             $toIndex['objectForTemplate'] =
                 Injector::inst()->create(AlgoliaPageCrawler::class, $item)->getMainContent();
         }
+
+        $item->invokeWithExtensions('onBeforeAttributesFromObject');
 
         $attributes = new Map(ArrayList::create());
 
@@ -132,8 +138,19 @@ class AlgoliaIndexer
                         // has-many, many-many, has-one
                         $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
                     } else {
-                        // db-field
-                        $attributes->push($attributeName, $dbField->forTemplate());
+                        // db-field, if it's a date then use the timestamp since we need it
+                        switch (get_class($dbField)) {
+                            case DBDate::class:
+                                $value = $dbField->getTimestamp();
+                                break;
+                            case DBBoolean::class:
+                                $value = $dbField->getValue();
+                                break;
+                            default:
+                                $value = $dbField->forTemplate();
+                        }
+
+                        $attributes->push($attributeName, $value);
                     }
                 }
             }
@@ -166,7 +183,7 @@ class AlgoliaIndexer
             if (is_iterable($related)) {
                 foreach ($related as $relatedObj) {
                     $relationshipAttributes = new Map(ArrayList::create());
-                    $relationshipAttributes->push('ID', $relatedObj->ID);
+                    $relationshipAttributes->push('objectID', $relatedObj->ID);
                     $relationshipAttributes->push('Title', $relatedObj->Title);
 
                     if ($item->hasMethod('updateAlgoliaRelationshipAttributes')) {
@@ -177,7 +194,7 @@ class AlgoliaIndexer
                 }
             } else {
                 $relationshipAttributes = new Map(ArrayList::create());
-                $relationshipAttributes->push('ID', $related->ID);
+                $relationshipAttributes->push('objectID', $related->ID);
                 $relationshipAttributes->push('Title', $related->Title);
 
                 if ($item->hasMethod('updateAlgoliaRelationshipAttributes')) {
@@ -187,7 +204,7 @@ class AlgoliaIndexer
                 $data = $relationshipAttributes->toArray();
             }
 
-            $attributes->push('relation'. $relationship, $data);
+            $attributes->push($relationship, $data);
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
@@ -203,7 +220,7 @@ class AlgoliaIndexer
     public function deleteItem($itemClass, $itemId)
     {
         $searchIndexes = $this->getService()->initIndexes($itemClass);
-        $key =  strtolower($itemClass . '.'. $itemId);
+        $key =  strtolower(str_replace('\\', '_', $itemClass) . '_'. $itemId);
 
         foreach ($searchIndexes as $searchIndex) {
             $searchIndex->deleteObject($key);
@@ -221,7 +238,7 @@ class AlgoliaIndexer
      */
     public function generateUniqueID($item)
     {
-        return strtolower(get_class($item) . '.'. $item->ID);
+        return strtolower(str_replace('\\', '_', get_class($item)) . '_'. $item->ID);
     }
 
     /**

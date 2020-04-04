@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Tasks;
 
+use Education\Gazette\Model\GazetteNoticePage;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Model\SiteTree;
@@ -11,10 +12,10 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\Dev\Debug;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\DB;
 use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\Versioned\Versioned;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
+use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
 class AlgoliaReindex extends BuildTask
 {
@@ -32,9 +33,14 @@ class AlgoliaReindex extends BuildTask
         Environment::increaseTimeLimitTo();
 
         $siteConfig = SiteConfig::current_site_config();
+        $targetClass = SiteTree::class;
+
+        if ($request->getVar('onlyNotices')) {
+            $targetClass = GazetteNoticePage::class;
+        }
 
         $items = Versioned::get_by_stage(
-            SiteTree::class,
+            $targetClass,
             'Live', 'AlgoliaIndexed IS NULL OR AlgoliaIndexed < (NOW() - INTERVAL 2 HOUR)'
         );
 
@@ -89,11 +95,11 @@ class AlgoliaReindex extends BuildTask
                     $currentBatches[$batchKey] = [];
                 }
 
-                $currentBatches[$batchKey] = $indexer->exportAttributesFromObject($item)->toArray();
+                $currentBatches[$batchKey][] = $indexer->exportAttributesFromObject($item)->toArray();
                 $item->touchAlgoliaIndexedDate();
                 $count++;
 
-                if (count($currentBatches[$batchKey]) > $batchSize) {
+                if (count($currentBatches[$batchKey]) >= $batchSize) {
                     $this->indexBatch($currentBatches[$batchKey]);
 
                     unset($currentBatches[$batchKey]);
@@ -137,7 +143,7 @@ class AlgoliaReindex extends BuildTask
      */
     public function indexBatch($items)
     {
-        $indexes = Injector::inst()->create(AlgoliaIndexer::class)->initIndexes($items);
+        $indexes = Injector::inst()->create(AlgoliaService::class)->initIndexes($items[0]);
 
         try {
             foreach ($indexes as $index) {

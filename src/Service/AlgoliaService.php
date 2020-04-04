@@ -5,8 +5,6 @@ namespace Wilr\SilverStripe\Algolia\Service;
 use Algolia\AlgoliaSearch\SearchClient;
 use Exception;
 use SilverStripe\Control\Director;
-use SilverStripe\Core\Config\Config;
-use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 
@@ -29,7 +27,6 @@ class AlgoliaService
      */
     public function getClient()
     {
-        var_dump($this);
         if (!$this->client) {
             if (!$this->adminApiKey) {
                 throw new Exception('No adminApiKey configured for '. self::class);
@@ -58,12 +55,10 @@ class AlgoliaService
      */
     public function initIndexes($item = null)
     {
-        $mapping = $this->config()->get('index_class_mapping');
-
         if (!$item) {
             return array_map(function ($indexName) {
                 return $this->environmentizeIndex($indexName);
-            }, array_keys($mapping));
+            }, array_keys($this->indexes));
         }
 
         if (is_string($item)) {
@@ -74,7 +69,7 @@ class AlgoliaService
 
         $matches = [];
 
-        foreach ($mapping as $indexName => $data) {
+        foreach ($this->indexes as $indexName => $data) {
             $classes = (isset($data['includeClasses'])) ? $data['includeClasses'] : null;
 
             if ($classes) {
