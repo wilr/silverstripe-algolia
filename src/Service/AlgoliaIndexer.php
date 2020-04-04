@@ -11,6 +11,7 @@ use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBBoolean;
 use SilverStripe\ORM\FieldType\DBDate;
+use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
@@ -133,7 +134,7 @@ class AlgoliaIndexer
 
                 $dbField = $item->relObject($attributeName);
 
-                if ($dbField && $dbField->exists()) {
+                if ($dbField && ($dbField->exists() || $dbField instanceof DBBoolean)) {
                     if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
                         // has-many, many-many, has-one
                         $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
@@ -141,6 +142,7 @@ class AlgoliaIndexer
                         // db-field, if it's a date then use the timestamp since we need it
                         switch (get_class($dbField)) {
                             case DBDate::class:
+                            case DBDatetime::class:
                                 $value = $dbField->getTimestamp();
                                 break;
                             case DBBoolean::class:

@@ -2,7 +2,6 @@
 
 namespace Wilr\SilverStripe\Algolia\Tasks;
 
-use Education\Gazette\Model\GazetteNoticePage;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Model\SiteTree;
@@ -35,14 +34,21 @@ class AlgoliaReindex extends BuildTask
         $siteConfig = SiteConfig::current_site_config();
         $targetClass = SiteTree::class;
 
-        if ($request->getVar('onlyNotices')) {
-            $targetClass = GazetteNoticePage::class;
+        if ($request->getVar('onlyClass')) {
+            $targetClass = $request->getVar('onlyClass');
         }
 
-        $items = Versioned::get_by_stage(
-            $targetClass,
-            'Live', 'AlgoliaIndexed IS NULL OR AlgoliaIndexed < (NOW() - INTERVAL 2 HOUR)'
-        );
+        if ($request->getVar('forceAll')) {
+            $items = Versioned::get_by_stage(
+                $targetClass,
+                'Live'
+            );
+        } else {
+            $items = Versioned::get_by_stage(
+                $targetClass,
+                'Live', 'AlgoliaIndexed IS NULL OR AlgoliaIndexed < (NOW() - INTERVAL 2 HOUR)'
+            );
+        }
 
         $count = 0;
         $skipped = 0;
@@ -53,7 +59,7 @@ class AlgoliaReindex extends BuildTask
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
 
         echo sprintf(
-            'Found %s pages to index, will export in batches of %s, grouped by type. %s',
+            'Found %s pages remaining to index, will export in batches of %s, grouped by type. %s',
             $total,
             $batchSize,
             $batchesTotal,
