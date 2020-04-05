@@ -15,6 +15,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
+use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
 class AlgoliaObjectExtension extends DataExtension
 {
@@ -59,8 +60,8 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function requireDefaultRecords()
     {
-        $indexer = Injector::inst()->create(AlgoliaIndexer::class);
-        $indexer->syncSettings();
+        $algolia = Injector::inst()->create(AlgoliaService::class);
+        $algolia->syncSettings();
     }
 
     /**

@@ -262,30 +262,4 @@ class AlgoliaIndexer
             }
         }
     }
-
-    /**
-     * Sync setting from YAML configuration into Algolia.
-     *
-     * This runs automatically on dev/build operations.
-     */
-    public function syncSettings()
-    {
-        $config = $this->config('index_class_mapping');
-
-        foreach ($config as $index => $data) {
-            $indexName = $this->getService()->environmentizeIndex($index);
-
-            if (isset($data['indexSettings'])) {
-                $index = $this->getService()->getClient()->initIndex($indexName);
-
-                if ($index) {
-                    try {
-                        $index->setSettings($data);
-                    } catch (Exception $e) {
-                        Injector::inst()->create(LoggerInterface::class)->error($e);
-                    }
-                }
-            }
-        }
-    }
 }

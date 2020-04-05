@@ -4,6 +4,7 @@ namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\SearchClient;
 use Exception;
+use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
@@ -100,5 +101,36 @@ class AlgoliaService
     public function environmentizeIndex($indexName)
     {
         return sprintf("%s_%s", Director::get_environment_type(), $indexName);
+    }
+
+
+    /**
+     * Sync setting from YAML configuration into Algolia.
+     *
+     * This runs automatically on dev/build operations.
+     */
+    public function syncSettings()
+    {
+        $config = $this->indexes;
+
+        if (!$config) {
+            return;
+        }
+
+        foreach ($config as $index => $data) {
+            $indexName = $this->environmentizeIndex($index);
+
+            if (isset($data['indexSettings'])) {
+                $index = $this->getClient()->initIndex($indexName);
+
+                if ($index) {
+                    try {
+                        $index->setSettings($data);
+                    } catch (Exception $e) {
+                        Injector::inst()->create(LoggerInterface::class)->error($e);
+                    }
+                }
+            }
+        }
     }
 }
