@@ -47,11 +47,7 @@ type is prefixed**
 *app/_config/algolia.yml*
 ```yml
 ---
-Name: algoliasettings
-After: silverstripe-algolia
----
----
-Name: algoliasettings
+Name: algolia
 After: silverstripe-algolia
 ---
 SilverStripe\Core\Injector\Injector:
@@ -66,13 +62,52 @@ SilverStripe\Core\Injector\Injector:
             - SilverStripe\CMS\Model\SiteTree
           indexSettings:
             attributesForFaceting:
-              - GazetteTaxonomyTerms
               - 'filterOnly(ObjectClassName)'
-
 ```
 
 Once the indexes and API keys are configured, run a `dev/build` to update the
-database and refresh the indexSettings.
+database and refresh the indexSettings. Alternatively you can run
+`AlgoliaConfigure` to manually rebuild the indexSettings.
+
+### Defining Replica Indexes
+
+If your search form provides a sort option (e.g latest or relevance) then you
+will be using replica indexes (https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/how-to/creating-replicas/)
+
+These can be defined using the same YAML configuration.
+
+```yml
+---
+Name: algolia
+After: silverstripe-algolia
+---
+SilverStripe\Core\Injector\Injector:
+  Wilr\SilverStripe\Algolia\Service\AlgoliaService:
+    properties:
+      adminApiKey: '`ALGOLIA_ADMIN_API_KEY`'
+      searchApiKey: '`ALGOLIA_SEARCH_API_KEY`'
+      applicationId: '`ALGOLIA_SEARCH_APP_ID`'
+      indexes:
+        IndexName:
+          includeClasses:
+            - SilverStripe\CMS\Model\SiteTree
+          indexSettings:
+            attributesForFaceting:
+              - 'filterOnly(ObjectClassName)'
+            replicas:
+              - IndexName_Latest
+        IndexName_Latest:
+          indexSettings:
+            ranking:
+              - 'desc(objectCreated)'
+              - 'typo'
+              - 'words'
+              - 'filters'
+              - 'proximity'
+              - 'attribute'
+              - 'exact'
+              - 'custom'
+```
 
 ## Indexing
 
@@ -89,6 +124,14 @@ Individually records will be indexed automatically going forward via the
 called when publishing or unpublishing a document. If your DataObject does not
 implement the `Versioned` extension you'll need to manage this state yourself
 by calling `$item->indexInAlgolia()` and `$item->removeFromAlgolia()`.
+
+`AlgoliaReindex` takes a number of arguments to allow for customisation of bulk
+indexing. For instance, if you have a large amount of JobVacancies to bulk
+import but only need the active ones you can trigger the task as follows:
+
+```
+/vendor/bin/sake dev/tasks/AlgoliaReindex "onlyClass=Vacancy&filter=ExpiryDate>NOW()"
+```
 
 ### Customising the indexed attributes (fields)
 

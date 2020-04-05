@@ -125,9 +125,20 @@ class AlgoliaService
 
                 if ($index) {
                     try {
-                        $index->setSettings($data);
+                        // update any replica indexes with the environment
+                        if (isset($data['indexSettings']['replicas'])) {
+                            $data['indexSettings']['replicas'] = array_map(function($replica) {
+                                return Director::get_environment_type() . '_' . $replica;
+                            }, $data['indexSettings']['replicas']);
+                        }
+
+                        $index->setSettings($data['indexSettings']);
                     } catch (Exception $e) {
                         Injector::inst()->create(LoggerInterface::class)->error($e);
+
+                        if (Director::isDev()) {
+                            throw $e;
+                        }
                     }
                 }
             }

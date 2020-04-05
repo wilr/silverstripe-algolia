@@ -24,7 +24,7 @@ class AlgoliaReindex extends BuildTask
 
     private static $segment = 'AlgoliaReindex';
 
-    private static $batch_size = 10;
+    private static $batch_size = 20;
 
     public function run($request)
     {
@@ -33,20 +33,29 @@ class AlgoliaReindex extends BuildTask
 
         $siteConfig = SiteConfig::current_site_config();
         $targetClass = SiteTree::class;
+        $additionalFiltering = '';
 
         if ($request->getVar('onlyClass')) {
             $targetClass = $request->getVar('onlyClass');
         }
 
+        if ($request->getVar('filter')) {
+            $additionalFiltering = $request->getVar('filter');
+        }
+
         if ($request->getVar('forceAll')) {
             $items = Versioned::get_by_stage(
                 $targetClass,
-                'Live'
+                'Live',
+                $additionalFiltering
             );
         } else {
             $items = Versioned::get_by_stage(
                 $targetClass,
-                'Live', 'AlgoliaIndexed IS NULL OR AlgoliaIndexed < (NOW() - INTERVAL 2 HOUR)'
+                'Live',
+                ($additionalFiltering)
+                    ? $additionalFiltering
+                    : 'AlgoliaIndexed IS NULL OR AlgoliaIndexed < (NOW() - INTERVAL 2 HOUR)'
             );
         }
 
