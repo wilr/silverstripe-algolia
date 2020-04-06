@@ -61,7 +61,6 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
      */
     public function setup()
     {
-
     }
 
     /**

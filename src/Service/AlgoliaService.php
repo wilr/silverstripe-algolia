@@ -64,7 +64,7 @@ class AlgoliaService
 
         if (is_string($item)) {
             $item = Injector::inst()->get($item);
-        } else if (is_array($item)) {
+        } elseif (is_array($item)) {
             $item = Injector::inst()->get($item['objectClassName']);
         }
 
@@ -127,7 +127,7 @@ class AlgoliaService
                     try {
                         // update any replica indexes with the environment
                         if (isset($data['indexSettings']['replicas'])) {
-                            $data['indexSettings']['replicas'] = array_map(function($replica) {
+                            $data['indexSettings']['replicas'] = array_map(function ($replica) {
                                 return Director::get_environment_type() . '_' . $replica;
                             }, $data['indexSettings']['replicas']);
                         }

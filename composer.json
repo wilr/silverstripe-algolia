@@ -15,6 +15,11 @@
       "phpunit/phpunit": "^5.7",
       "squizlabs/php_codesniffer": "^3"
   },
+  "scripts": {
+    "lint": "phpcs --extensions=php src/ tests/",
+    "syntax-check": "find src/ tests/ -type f -name '*.php' -exec php -l {} \\;",
+    "lint-clean": "phpcbf src/ tests/"
+  },
   "extra": {
       "branch-alias": {
           "dev-master": "1.x-dev"

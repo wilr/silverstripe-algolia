@@ -47,7 +47,8 @@ class AlgoliaObjectExtensionTest extends SapphireTest
         $object->touchAlgoliaIndexedDate();
 
         $this->assertNotNull(DB::query(sprintf(
-            'SELECT AlgoliaIndexed FROM AlgoliaTestObject WHERE ID = %s', $object->ID
+            'SELECT AlgoliaIndexed FROM AlgoliaTestObject WHERE ID = %s',
+            $object->ID
         )));
     }
 }

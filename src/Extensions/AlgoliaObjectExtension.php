@@ -160,7 +160,6 @@ class AlgoliaObjectExtension extends DataExtension
             $indexDeleteJob = new AlgoliaDeleteItemJob(get_class($this->owner), $key);
             QueuedJobService::singleton()->queueJob($indexDeleteJob);
         } else {
-
             try {
                 $indexer->deleteItem($this);
 
