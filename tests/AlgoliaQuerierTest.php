@@ -5,10 +5,12 @@ namespace Wilr\SilverStripe\Algolia\Tests;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\ORM\DataObjectSchema;
+use SilverStripe\ORM\PaginatedList;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
+use Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
-class AlgoliaIndexerTest extends SapphireTest
+class AlgoliaQuerierTest extends SapphireTest
 {
     protected $usesDatabase = true;
 
@@ -25,15 +27,10 @@ class AlgoliaIndexerTest extends SapphireTest
         Injector::inst()->registerService(new TestAlgoliaService(), AlgoliaService::class);
     }
 
-    public function testExportAttributesForObject()
+    public function testFetchResults()
     {
-        $object = AlgoliaTestObject::create();
-        $object->Title = 'Foobar';
-        $object->write();
-        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
-        $map = $indexer->exportAttributesFromObject($object)->toArray();
+        $results = Injector::inst()->get(AlgoliaQuerier::class)->fetchResults('indexName', 'search keywords');
 
-        $this->assertArrayHasKey('objectID', $map);
-        $this->assertEquals($map['objectTitle'], 'Foobar');
+        $this->assertInstanceOf(PaginatedList::class, $results);
     }
 }

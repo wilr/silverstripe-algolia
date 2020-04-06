@@ -1,6 +1,7 @@
 # :mag: Silverstripe Algolia Module
 
 [![Build Status](http://img.shields.io/travis/wilr/silverstripe-algolia.svg?style=flat-square)](http://travis-ci.org/wilr/silverstripe-algolia)
+[![codecov](https://codecov.io/gh/wilr/silverstripe-algolia/branch/master/graph/badge.svg)](https://codecov.io/gh/wilr/silverstripe-algolia)
 [![Version](http://img.shields.io/packagist/v/wilr/silverstripe-algolia.svg?style=flat-square)](https://packagist.org/packages/wilr/silverstripe-algolia)
 [![License](http://img.shields.io/packagist/l/wilr/silverstripe-algolia.svg?style=flat-square)](LICENSE)
 

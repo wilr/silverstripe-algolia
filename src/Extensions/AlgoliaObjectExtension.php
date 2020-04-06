@@ -109,7 +109,7 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function indexInAlgolia(): bool
     {
-        if ($this->owner->indexEnabled() && $this->owner->invokeWithExtensions('canIndexInAlgolia') === false) {
+        if ($this->owner->indexEnabled() && min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
             return false;
         }
 

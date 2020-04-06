@@ -186,7 +186,7 @@ class AlgoliaIndexer
                 foreach ($related as $relatedObj) {
                     $relationshipAttributes = new Map(ArrayList::create());
                     $relationshipAttributes->push('objectID', $relatedObj->ID);
-                    $relationshipAttributes->push('Title', $relatedObj->Title);
+                    $relationshipAttributes->push('objectTitle', $relatedObj->Title);
 
                     if ($item->hasMethod('updateAlgoliaRelationshipAttributes')) {
                         $item->updateAlgoliaRelationshipAttributes($relationshipAttributes, $relatedObj);
