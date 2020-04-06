@@ -17,11 +17,15 @@ composer require "wilr/silverstripe-alogolia"
 
 ## Features
 
-* :ballot_box_with_check: Supports multiple indexes and saving classes into multiple.
-* :ballot_box_with_check: Integrates into existing versioned workflow.
-* :ballot_box_with_check: No dependancies on the CMS, supports any DataObject subclass.
-* :ballot_box_with_check: Queued job support for offloading operations to Algolia.
-* :ballot_box_with_check: Easily configure search configuration and indexes via YAML and PHP.
+:ballot_box_with_check: Supports multiple indexes and saving records into multiple indexes.
+
+:ballot_box_with_check: Integrates into existing versioned workflow.
+
+:ballot_box_with_check: No dependancies on the CMS, supports any DataObject subclass.
+
+:ballot_box_with_check: Queued job support for offloading operations to Algolia.
+
+:ballot_box_with_check: Easily configure search configuration and indexes via YAML and PHP.
 
 ## Documentation
 
@@ -173,11 +177,9 @@ Objects can define a `canIndexInAlgolia` method which should return false if the
 object should not be indexed in algolia.
 
 ```php
-public function canIndexInAlgolia()
+public function canIndexInAlgolia(): bool
 {
-    if ($this->Expired) {
-        return false;
-    }
+    return ($this->Expired) ? false : true;
 }
 ```
 
@@ -221,6 +223,8 @@ class PageController extends ContentController
 }
 ```
 
+Or alternatively you can make use of JS Search SDK (https://www.algolia.com/doc/api-client/getting-started/install/javascript/)
+
 ## :mag: Inspect Object Fields
 
 To assist with debugging what fields will be pushed into Algolia and see what
@@ -232,8 +236,3 @@ be run via CLI
 ```
 
 Will output the Algolia data structure for the Page with the ID of '1'.
-
-
-## TODO
-
-- [ ] Document and Finish results controller modifications
