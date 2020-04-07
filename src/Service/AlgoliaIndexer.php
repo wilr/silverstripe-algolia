@@ -105,7 +105,7 @@ class AlgoliaIndexer
             'objectSilverstripeUUID' => $item->ID,
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
-            'objectClassNameHierachy' => array_values(ClassInfo::ancestry(get_class($item))),
+            'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),
             'objectLastEdited' => $item->dbObject('LastEdited')->getTimestamp(),
             'objectCreated' => $item->dbObject('Created')->getTimestamp(),
             'objectLink' => str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink())
