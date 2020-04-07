@@ -52,7 +52,7 @@ class AlgoliaPageCrawler
             $xpath = new DOMXPath($dom);
             $nodes = $xpath->query("//main");
 
-            if ($nodes) {
+            if (isset($nodes[0])) {
                 $output = $nodes[0]->nodeValue;
             }
         }
