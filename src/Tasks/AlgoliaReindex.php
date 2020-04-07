@@ -11,7 +11,6 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\Dev\Debug;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\SiteConfig\SiteConfig;
 use SilverStripe\Versioned\Versioned;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
@@ -31,7 +30,7 @@ class AlgoliaReindex extends BuildTask
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo();
 
-        $siteConfig = SiteConfig::current_site_config();
+        $algoliaService = Injector::inst()->create(AlgoliaService::class);
         $targetClass = SiteTree::class;
         $additionalFiltering = '';
 
@@ -140,12 +139,10 @@ class AlgoliaReindex extends BuildTask
         ));
 
         Debug::message(sprintf(
-            "See index at <a href='https://www.algolia.com/apps/%s/explorer/browse/%s' target='_blank'>".
-            "algolia.com/apps/%s/explorer/browse/%s</a>",
-            $siteConfig->applicationID,
-            $siteConfig->indexName,
-            $siteConfig->applicationID,
-            $siteConfig->indexName
+            "See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>".
+            "algolia.com/apps/%s/explorer/indices</a>",
+            $algoliaService->applicationId,
+            $algoliaService->applicationId
         ));
     }
 

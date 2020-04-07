@@ -187,6 +187,6 @@ class AlgoliaObjectExtension extends DataExtension
     {
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
-        return $indexer->initIndexes($this->owner);
+        return $indexer->getService()->initIndexes($this->owner);
     }
 }
