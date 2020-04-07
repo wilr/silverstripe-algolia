@@ -26,7 +26,7 @@ class AlgoliaInspect extends BuildTask
         }
 
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
-        $indexer->syncSettings();
+        $indexer->getService()->syncSettings();
 
         echo '### LOCAL FIELDS' . PHP_EOL;
         echo '<pre>';

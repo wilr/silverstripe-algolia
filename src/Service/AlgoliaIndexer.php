@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Service;
 
+use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
@@ -105,7 +106,7 @@ class AlgoliaIndexer
             'objectSilverstripeUUID' => $item->ID,
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
-            'objectClassNameHierachy' => array_values(ClassInfo::ancestry(get_class($item))),
+            'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),
             'objectLastEdited' => $item->dbObject('LastEdited')->getTimestamp(),
             'objectCreated' => $item->dbObject('Created')->getTimestamp(),
             'objectLink' => str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink())
@@ -255,10 +256,12 @@ class AlgoliaIndexer
         $indexes = $this->getService()->initIndexes($item);
 
         foreach ($indexes as $index) {
-            $output = $index->getObject($id);
-
-            if ($output) {
-                return $output;
+            try {
+                $output = $index->getObject($id);
+                if ($output) {
+                    return $output;
+                }
+            } catch (NotFoundException $ex) {
             }
         }
     }

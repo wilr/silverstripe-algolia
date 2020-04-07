@@ -12,7 +12,7 @@
 ## Installation
 
 ```
-composer require "wilr/silverstripe-alogolia"
+composer require "wilr/silverstripe-algolia"
 ```
 
 ## Features
