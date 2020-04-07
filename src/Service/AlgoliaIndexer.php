@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Service;
 
+use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
@@ -255,10 +256,12 @@ class AlgoliaIndexer
         $indexes = $this->getService()->initIndexes($item);
 
         foreach ($indexes as $index) {
-            $output = $index->getObject($id);
-
-            if ($output) {
-                return $output;
+            try {
+                $output = $index->getObject($id);
+                if ($output) {
+                    return $output;
+                }
+            } catch (NotFoundException $ex) {
             }
         }
     }
