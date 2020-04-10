@@ -16,13 +16,15 @@ class AlgoliaInspect extends BuildTask
         $itemId = $request->getVar('ID');
 
         if (!$itemClass || !$itemId) {
-            return $this->httpError(400, 'Missing ClassName or ID');
+            echo 'Missing ClassName or ID';
+            exit();
         }
 
         $item = $itemClass::get()->byId($itemId);
 
         if (!$item || !$item->canView()) {
-            return $this->httpError(404, 'Missing or unviewable item');
+            echo 'Missing or unviewable object '. $itemClass . ' #'. $itemId;
+            exit();
         }
 
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
