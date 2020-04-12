@@ -99,7 +99,7 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
         $obj = DataObject::get_by_id($this->itemClass, $id);
 
         if ($obj) {
-            $obj->indexInAlgolia();
+            $obj->doImmediateIndexInAlgolia();
 
             unset($obj);
         }
