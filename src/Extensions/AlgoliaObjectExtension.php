@@ -103,7 +103,7 @@ class AlgoliaObjectExtension extends DataExtension
     }
 
     /**
-     * Index this record into Algolia
+     * Index this record into Algolia or queue if configured to do so
      *
      * @return bool
      */
@@ -119,22 +119,30 @@ class AlgoliaObjectExtension extends DataExtension
 
             return true;
         } else {
-            $indexer = Injector::inst()->get(AlgoliaIndexer::class);
-
-            try {
-                $indexer->indexItem($this->owner);
-
-                $this->touchAlgoliaIndexedDate();
-
-                return true;
-            } catch (Exception $e) {
-                Injector::inst()->create(LoggerInterface::class)->error($e);
-
-                return false;
-            }
+            return $this->doImmediateIndexInAlgolia();
         }
+    }
 
-        return false;
+    /**
+     * Index this record into Algolia
+     *
+     * @return bool
+     */
+    public function doImmediateIndexInAlgolia()
+    {
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+
+        try {
+            $indexer->indexItem($this->owner);
+
+            $this->touchAlgoliaIndexedDate();
+
+            return true;
+        } catch (Exception $e) {
+            Injector::inst()->create(LoggerInterface::class)->error($e);
+
+            return false;
+        }
     }
 
     /**
