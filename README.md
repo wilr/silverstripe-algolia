@@ -67,7 +67,7 @@ SilverStripe\Core\Injector\Injector:
             - SilverStripe\CMS\Model\SiteTree
           indexSettings:
             attributesForFaceting:
-              - 'filterOnly(ObjectClassName)'
+              - 'filterOnly(objectClassName)'
 ```
 
 Once the indexes and API keys are configured, run a `dev/build` to update the
