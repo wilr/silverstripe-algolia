@@ -70,7 +70,7 @@ class AlgoliaObjectExtension extends DataExtension
     public function canIndexInAlgolia(): bool
     {
         if ($this->owner->hasField('ShowInSearch')) {
-            return $this->owner->hasField('ShowInSearch');
+            return $this->owner->ShowInSearch;
         }
 
         return true;
