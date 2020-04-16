@@ -10,19 +10,23 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 /**
- * Remove an item (or multiple items) from Algolia async. This method works well
+ * Remove an item from Algolia async. This method works well
  * for performance and batching large operations
  */
 class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
      * @param string $itemClass
-     * @param array|int $itemIds
+     * @param int $itemId
      */
-    public function __construct($itemClass, $key)
+    public function __construct($itemClass = null, $itemId = null)
     {
-        $this->itemClass = $itemClass;
-        $this->itemID = $key;
+        if ($itemClass) {
+            $this->itemClass = $itemClass;
+        }
+        if ($itemId) {
+            $this->itemID = $itemId;
+        }
     }
 
 
@@ -70,7 +74,7 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
     {
         try {
             $indexer = Injector::inst()->create(AlgoliaIndexer::class);
-            $indexer->deleteData($this->itemClass, $this->itemID);
+            $indexer->deleteItem($this->itemClass, $this->itemID);
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
