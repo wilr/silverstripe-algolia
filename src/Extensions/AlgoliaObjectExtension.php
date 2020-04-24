@@ -82,22 +82,34 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function onAfterPublish()
     {
-        $this->owner->indexInAlgolia();
+        if (min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
+            $this->owner->removeFromAlgolia();
+        } else {
+            $this->owner->indexInAlgolia();
+        }
+    }
+
+    public function markAsRemovedFromAlgoliaIndex()
+    {
+        $this->touchAlgoliaIndexedDate(true);
     }
 
     /**
      * Update the AlgoliaIndexed date for this object.
      */
-    public function touchAlgoliaIndexedDate()
+    public function touchAlgoliaIndexedDate($isDeleted = false)
     {
         $schema = DataObject::getSchema();
         $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaIndexed');
 
         if ($table) {
-            DB::query(sprintf('UPDATE %s SET AlgoliaIndexed = NOW() WHERE ID = %s', $table, $this->owner->ID));
+            $newValue = $isDeleted ? 'null' : 'NOW()';
+            DB::query(sprintf("UPDATE %s SET AlgoliaIndexed = $newValue WHERE ID = %s", $table, $this->owner->ID));
 
             if ($this->owner->hasExtension('SilverStripe\Versioned\Versioned')) {
-                DB::query(sprintf('UPDATE %s_Live SET AlgoliaIndexed = NOW() WHERE ID = %s', $table, $this->owner->ID));
+                DB::query(
+                    sprintf("UPDATE %s_Live SET AlgoliaIndexed = $newValue WHERE ID = %s", $table, $this->owner->ID)
+                );
             }
         }
     }
@@ -157,9 +169,14 @@ class AlgoliaObjectExtension extends DataExtension
 
     /**
      * Remove this item from Algolia
+     * @return boolean false if failed or not indexed
      */
     public function removeFromAlgolia()
     {
+        if (!$this->owner->AlgoliaIndexed) {
+            // Not in the index, so skipping
+            return false;
+        }
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         if ($this->config()->get('use_queued_indexing')) {
@@ -169,11 +186,13 @@ class AlgoliaObjectExtension extends DataExtension
             try {
                 $indexer->deleteItem(get_class($this->owner), $this->owner->ID);
 
-                $this->touchAlgoliaIndexedDate();
+                $this->markAsRemovedFromAlgoliaIndex();
             } catch (Exception $e) {
                 Injector::inst()->create(LoggerInterface::class)->error($e);
+                return false;
             }
         }
+        return true;
     }
 
     /**
