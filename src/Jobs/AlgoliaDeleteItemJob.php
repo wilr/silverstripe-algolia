@@ -5,6 +5,7 @@ namespace Wilr\Silverstripe\Algolia\Jobs;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\DataObject;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
@@ -75,6 +76,11 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
         try {
             $indexer = Injector::inst()->create(AlgoliaIndexer::class);
             $indexer->deleteItem($this->itemClass, $this->itemID);
+            $object = DataObject::get_by_id($this->itemClass, $this->itemID);
+            // Item may be deleted, if it still exists then set index date to null
+            if ($object) {
+                $object->invokeWithExtensions('markAsRemovedFromAlgoliaIndex');
+            }
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
