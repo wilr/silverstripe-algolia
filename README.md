@@ -210,7 +210,7 @@ class PageController extends ContentController
         $results = Injector::inst()->get(AlgoliaQuerier::class)->fetchResults(
             'indexName',
             $this->request->getVar('search'), [
-                'page' => $request->getVar('start') ?: 0,
+                'page' => $this->request->getVar('start') ?: 0,
                 'hitsPerPage' => 25
             ]
         );
