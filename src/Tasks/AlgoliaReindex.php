@@ -131,19 +131,23 @@ class AlgoliaReindex extends BuildTask
             }
         }
 
-        Debug::message(sprintf(
-            "Number of objects indexed: %s, Errors: %s, Skipped %s",
-            $count,
-            $errored,
-            $skipped
-        ));
+        Debug::message(
+            sprintf(
+                "Number of objects indexed: %s, Errors: %s, Skipped %s",
+                $count,
+                $errored,
+                $skipped
+            )
+        );
 
-        Debug::message(sprintf(
-            "See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>".
-            "algolia.com/apps/%s/explorer/indices</a>",
-            $algoliaService->applicationId,
-            $algoliaService->applicationId
-        ));
+        Debug::message(
+            sprintf(
+                "See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>".
+                "algolia.com/apps/%s/explorer/indices</a>",
+                $algoliaService->applicationId,
+                $algoliaService->applicationId
+            )
+        );
     }
 
     /**

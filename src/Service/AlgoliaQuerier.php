@@ -9,14 +9,12 @@ use SilverStripe\ORM\PaginatedList;
 
 /**
  * Wraps the Algolia SDK to return Silverstripe ORM records
- *
- *
  */
 class AlgoliaQuerier
 {
     /**
      * @param string $query
-     * @param array $searchParameters
+     * @param array  $searchParameters
      *
      * @return PaginatedList
      */

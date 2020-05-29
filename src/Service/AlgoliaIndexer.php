@@ -186,7 +186,7 @@ class AlgoliaIndexer
                                 } else {
                                     $value = $fieldData;
                                 }
-
+                                break;
                             default:
                                 $value = $dbField->forTemplate();
                         }
@@ -208,8 +208,8 @@ class AlgoliaIndexer
      * Retrieve all the attributes from the related object that we want to add
      * to this record. As the related record may not have the
      *
-     * @param DataObject $item
-     * @param string $relationship
+     * @param DataObject            $item
+     * @param string                $relationship
      * @param \SilverStripe\ORM\Map $attributes
      */
     public function exportAttributesFromRelationship($item, $relationship, $attributes)
@@ -274,7 +274,7 @@ class AlgoliaIndexer
      * have the same ID. Uses the classname and the ID.
      *
      * @deprecated
-     * @param DataObject $item
+     * @param      DataObject $item
      *
      * @return string
      */

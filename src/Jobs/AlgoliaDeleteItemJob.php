@@ -18,7 +18,7 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
      * @param string $itemClass
-     * @param int $itemId
+     * @param int    $itemId
      */
     public function __construct($itemUUID)
     {

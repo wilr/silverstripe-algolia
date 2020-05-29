@@ -30,7 +30,7 @@ class AlgoliaPageCrawler
      * that should be indexed.
      *
      * @config
-     * @var string
+     * @var    string
      */
     private static $content_xpath_selector = '//main';
 

@@ -57,9 +57,12 @@ class AlgoliaService
     public function initIndexes($item = null)
     {
         if (!$item) {
-            return array_map(function ($indexName) {
-                return $this->environmentizeIndex($indexName);
-            }, array_keys($this->indexes));
+            return array_map(
+                function ($indexName) {
+                    return $this->environmentizeIndex($indexName);
+                },
+                array_keys($this->indexes)
+            );
         }
 
         if (is_string($item)) {
@@ -127,9 +130,12 @@ class AlgoliaService
                     try {
                         // update any replica indexes with the environment
                         if (isset($data['indexSettings']['replicas'])) {
-                            $data['indexSettings']['replicas'] = array_map(function ($replica) {
-                                return Director::get_environment_type() . '_' . $replica;
-                            }, $data['indexSettings']['replicas']);
+                            $data['indexSettings']['replicas'] = array_map(
+                                function ($replica) {
+                                    return Director::get_environment_type() . '_' . $replica;
+                                },
+                                $data['indexSettings']['replicas']
+                            );
                         }
 
                         $index->setSettings($data['indexSettings']);

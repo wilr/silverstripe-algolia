@@ -57,11 +57,14 @@ class AlgoliaObjectExtension extends DataExtension
     public function updateSettingsFields(FieldList $fields)
     {
         if ($this->owner->indexEnabled()) {
-            $fields->addFieldsToTab('Root.Search', [
+            $fields->addFieldsToTab(
+                'Root.Search',
+                [
                 ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__.'.LastIndexed', 'Last indexed in Algolia'))
                     ->setDescription($this->owner->AlgoliaError),
-                ReadonlyField::create('AlgoliaUUID',  _t(__CLASS__.'.UUID', 'Algolia UUID'))
-            ]);
+                ReadonlyField::create('AlgoliaUUID', _t(__CLASS__.'.UUID', 'Algolia UUID'))
+                ]
+            );
         }
     }
 
@@ -174,12 +177,14 @@ class AlgoliaObjectExtension extends DataExtension
             $schema = DataObject::getSchema();
             $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaError');
 
-            DB::query(sprintf(
-                'UPDATE %s SET AlgoliaError = \'%s\' WHERE ID = %s',
-                $table,
-                Convert::raw2sql($e->getMessage()),
-                $this->owner->ID
-            ));
+            DB::query(
+                sprintf(
+                    'UPDATE %s SET AlgoliaError = \'%s\' WHERE ID = %s',
+                    $table,
+                    Convert::raw2sql($e->getMessage()),
+                    $this->owner->ID
+                )
+            );
 
             return false;
         }
@@ -197,6 +202,7 @@ class AlgoliaObjectExtension extends DataExtension
 
     /**
      * Remove this item from Algolia
+     *
      * @return boolean false if failed or not indexed
      */
     public function removeFromAlgolia()

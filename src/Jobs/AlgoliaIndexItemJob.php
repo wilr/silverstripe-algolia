@@ -13,7 +13,7 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
-     * @param string $itemClass
+     * @param string    $itemClass
      * @param array|int $itemIds
      */
     public function __construct($itemClass = null, $itemIds = null)
