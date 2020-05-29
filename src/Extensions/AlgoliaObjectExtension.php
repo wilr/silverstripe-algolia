@@ -11,6 +11,8 @@ use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
+use Ramsey\Uuid\Uuid;
+use SilverStripe\Core\Convert;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
@@ -22,17 +24,23 @@ class AlgoliaObjectExtension extends DataExtension
     use Configurable;
 
     /**
+     * @config
      *
+     * @var boolean
      */
     private static $enable_indexer = true;
 
     /**
+     * @config
      *
+     * @var boolean
      */
     private static $use_queued_indexing = false;
 
     private static $db = [
-        'AlgoliaIndexed' => 'Datetime'
+        'AlgoliaIndexed' => 'Datetime',
+        'AlgoliaError' => 'Varchar(200)',
+        'AlgoliaUUID' => 'Varchar(200)'
     ];
 
     /**
@@ -46,11 +54,13 @@ class AlgoliaObjectExtension extends DataExtension
     /**
      * @param FieldList
      */
-    public function updateCMSFields(FieldList $fields)
+    public function updateSettingsFields(FieldList $fields)
     {
         if ($this->owner->indexEnabled()) {
-            $fields->addFieldsToTab('Root.Main', [
+            $fields->addFieldsToTab('Root.Search', [
                 ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__.'.LastIndexed', 'Last indexed in Algolia'))
+                    ->setDescription($this->owner->AlgoliaError),
+                ReadonlyField::create('AlgoliaUUID',  _t(__CLASS__.'.UUID', 'Algolia UUID'))
             ]);
         }
     }
@@ -85,10 +95,19 @@ class AlgoliaObjectExtension extends DataExtension
         if (min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
             $this->owner->removeFromAlgolia();
         } else {
+            // check to see if the classname changed, if it has then it might
+            // need to be removed from other indexes before being re-added
+            if ($this->owner->isChanged('ClassName')) {
+                $this->owner->removeFromAlgolia();
+            }
+
             $this->owner->indexInAlgolia();
         }
     }
 
+    /**
+     *
+     */
     public function markAsRemovedFromAlgoliaIndex()
     {
         $this->touchAlgoliaIndexedDate(true);
@@ -126,7 +145,7 @@ class AlgoliaObjectExtension extends DataExtension
         }
 
         if ($this->config()->get('use_queued_indexing')) {
-            $indexJob = new AlgoliaIndexItemJob(get_class($this->owner), $this->owner->ID);
+            $indexJob = new AlgoliaIndexItemJob($this->owner->AlgoliaUUID);
             QueuedJobService::singleton()->queueJob($indexJob);
 
             return true;
@@ -146,12 +165,21 @@ class AlgoliaObjectExtension extends DataExtension
 
         try {
             $indexer->indexItem($this->owner);
-
             $this->touchAlgoliaIndexedDate();
 
             return true;
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
+
+            $schema = DataObject::getSchema();
+            $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaError');
+
+            DB::query(sprintf(
+                'UPDATE %s SET AlgoliaError = \'%s\' WHERE ID = %s',
+                $table,
+                Convert::raw2sql($e->getMessage()),
+                $this->owner->ID
+            ));
 
             return false;
         }
@@ -177,14 +205,18 @@ class AlgoliaObjectExtension extends DataExtension
             // Not in the index, so skipping
             return false;
         }
+
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         if ($this->config()->get('use_queued_indexing')) {
-            $indexDeleteJob = new AlgoliaDeleteItemJob(get_class($this->owner), $this->owner->ID);
+            $indexDeleteJob = new AlgoliaDeleteItemJob($this->owner->AlgoliaUUID);
+
             QueuedJobService::singleton()->queueJob($indexDeleteJob);
+
+            $this->markAsRemovedFromAlgoliaIndex();
         } else {
             try {
-                $indexer->deleteItem(get_class($this->owner), $this->owner->ID);
+                $indexer->deleteItem($this->owner->AlgoliaUUID);
 
                 $this->markAsRemovedFromAlgoliaIndex();
             } catch (Exception $e) {
@@ -193,6 +225,15 @@ class AlgoliaObjectExtension extends DataExtension
             }
         }
         return true;
+    }
+
+    public function onBeforeWrite()
+    {
+        if (!$this->owner->AlgoliaUUID) {
+            $uuid = Uuid::uuid4();
+
+            $this->owner->AlgoliaUUID = $uuid->toString();
+        }
     }
 
     /**

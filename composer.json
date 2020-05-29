@@ -9,7 +9,8 @@
   }],
   "require": {
       "symbiote/silverstripe-queuedjobs": "^4.0.0",
-      "algolia/algoliasearch-client-php": "^2"
+      "algolia/algoliasearch-client-php": "^2",
+      "ramsey/uuid": "^4"
   },
   "require-dev": {
       "phpunit/phpunit": "^5.7",

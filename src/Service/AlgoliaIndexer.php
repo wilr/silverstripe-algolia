@@ -13,7 +13,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBBoolean;
 use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBDatetime;
-use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
 use stdClass;
@@ -42,6 +42,11 @@ class AlgoliaIndexer
     ];
 
     /**
+     * @config
+     */
+    private static $max_field_size_bytes = 10000;
+
+    /**
      * Add the provided item to the Algolia index.
      *
      * Callee should check whether this object should be indexed at all. Calls
@@ -64,6 +69,9 @@ class AlgoliaIndexer
         return $this;
     }
 
+    /**
+     * @return AlgoliaService
+     */
     public function getService()
     {
         return Injector::inst()->get(AlgoliaService::class);
@@ -102,8 +110,8 @@ class AlgoliaIndexer
     public function exportAttributesFromObject($item)
     {
         $toIndex = [
-            'objectID' => $this->generateUniqueID($item),
-            'objectSilverstripeUUID' => $item->ID,
+            'objectID' => $item->AlgoliaUUID,
+            'objectSilverstripeID' => $item->ID,
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
             'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),
@@ -134,6 +142,7 @@ class AlgoliaIndexer
                 }
 
                 $dbField = $item->relObject($attributeName);
+                $maxFieldSize = $this->config()->get('max_field_size_bytes');
 
                 if ($dbField && ($dbField->exists() || $dbField instanceof DBBoolean)) {
                     if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
@@ -141,6 +150,8 @@ class AlgoliaIndexer
                         $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
                     } else {
                         // db-field, if it's a date then use the timestamp since we need it
+                        $hasContent = true;
+
                         switch (get_class($dbField)) {
                             case DBDate::class:
                             case DBDatetime::class:
@@ -149,11 +160,40 @@ class AlgoliaIndexer
                             case DBBoolean::class:
                                 $value = $dbField->getValue();
                                 break;
+                            case DBHTMLText::class:
+                                $fieldData = $dbField->NoHTML();
+                                $fieldLength = mb_strlen($fieldData, '8bit');
+
+                                if ($fieldLength > $maxFieldSize) {
+                                    $maxIterations = 100;
+                                    $i = 0;
+
+                                    while ($hasContent && $i < $maxIterations) {
+                                        $block = mb_strcut(
+                                            $fieldData,
+                                            $i * $maxFieldSize,
+                                            $maxFieldSize - 1
+                                        );
+
+                                        if ($block) {
+                                            $attributes->push($attributeName .'_Block'. $i, $block);
+                                        } else {
+                                            $hasContent = false;
+                                        }
+
+                                        $i++;
+                                    }
+                                } else {
+                                    $value = $fieldData;
+                                }
+
                             default:
                                 $value = $dbField->forTemplate();
                         }
 
-                        $attributes->push($attributeName, $value);
+                        if ($hasContent) {
+                            $attributes->push($attributeName, $value);
+                        }
                     }
                 }
             }
@@ -166,7 +206,7 @@ class AlgoliaIndexer
 
     /**
      * Retrieve all the attributes from the related object that we want to add
-     * to this record.
+     * to this record. As the related record may not have the
      *
      * @param DataObject $item
      * @param string $relationship
@@ -198,7 +238,7 @@ class AlgoliaIndexer
             } else {
                 $relationshipAttributes = new Map(ArrayList::create());
                 $relationshipAttributes->push('objectID', $related->ID);
-                $relationshipAttributes->push('Title', $related->Title);
+                $relationshipAttributes->push('objectTitle', $related->Title);
 
                 if ($item->hasMethod('updateAlgoliaRelationshipAttributes')) {
                     $item->updateAlgoliaRelationshipAttributes($relationshipAttributes, $related);
@@ -217,16 +257,14 @@ class AlgoliaIndexer
      * Remove an item ID from the index. As this would usually be when an object
      * is deleted in Silverstripe we cannot rely on the object existing.
      *
-     * @param string $itemClass
-     * @param int $itemId
+     * @param DataObject $item
      */
-    public function deleteItem($itemClass, $itemId)
+    public function deleteItem($item)
     {
-        $searchIndexes = $this->getService()->initIndexes($itemClass);
-        $key =  strtolower(str_replace('\\', '_', $itemClass) . '_'. $itemId);
+        $searchIndexes = $this->getService()->initIndexes();
 
         foreach ($searchIndexes as $searchIndex) {
-            $searchIndex->deleteObject($key);
+            $searchIndex->deleteObject($item->AlgoliaUUID);
         }
     }
 
@@ -235,6 +273,7 @@ class AlgoliaIndexer
      * different dataobjects such as products and pages they potentially would
      * have the same ID. Uses the classname and the ID.
      *
+     * @deprecated
      * @param DataObject $item
      *
      * @return string
@@ -251,13 +290,11 @@ class AlgoliaIndexer
      */
     public function getObject($item)
     {
-        $id = $this->generateUniqueID($item);
-
         $indexes = $this->getService()->initIndexes($item);
 
         foreach ($indexes as $index) {
             try {
-                $output = $index->getObject($id);
+                $output = $index->getObject($item);
                 if ($output) {
                     return $output;
                 }

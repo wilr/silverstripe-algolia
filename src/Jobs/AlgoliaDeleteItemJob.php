@@ -20,13 +20,10 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
      * @param string $itemClass
      * @param int $itemId
      */
-    public function __construct($itemClass = null, $itemId = null)
+    public function __construct($itemUUID)
     {
-        if ($itemClass) {
-            $this->itemClass = $itemClass;
-        }
-        if ($itemId) {
-            $this->itemID = $itemId;
+        if ($itemUUID) {
+            $this->itemUUID = $itemUUID;
         }
     }
 
@@ -39,8 +36,8 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
     public function getTitle()
     {
         return sprintf(
-            'Algolia remove %s',
-            $this->itemID
+            'Algolia remove object %s',
+            $this->itemUUID
         );
     }
 
@@ -54,33 +51,11 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
         return QueuedJob::IMMEDIATE;
     }
 
-    /**
-     * This is called immediately before a job begins - it gives you a chance
-     * to initialise job data and make sure everything's good to go
-     *
-     * What we're doing in our case is to queue up the list of items we know we need to
-     * process still (it's not everything - just the ones we know at the moment)
-     *
-     * When we go through, we'll constantly add and remove from this queue, meaning
-     * we never overload it with content
-     */
-    public function setup()
-    {
-    }
-
-    /**
-     * Lets process a single node
-     */
     public function process()
     {
         try {
             $indexer = Injector::inst()->create(AlgoliaIndexer::class);
-            $indexer->deleteItem($this->itemClass, $this->itemID);
-            $object = DataObject::get_by_id($this->itemClass, $this->itemID);
-            // Item may be deleted, if it still exists then set index date to null
-            if ($object) {
-                $object->invokeWithExtensions('markAsRemovedFromAlgoliaIndex');
-            }
+            $indexer->deleteItem($this->itemUUID);
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
