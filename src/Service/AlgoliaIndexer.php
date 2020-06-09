@@ -261,11 +261,17 @@ class AlgoliaIndexer
      */
     public function deleteItem($item)
     {
+        if (!$item || !$item->isInDB()) {
+            return false;
+        }
+
         $searchIndexes = $this->getService()->initIndexes();
 
-        foreach ($searchIndexes as $searchIndex) {
+        foreach ($searchIndexes as $key => $searchIndex) {
             $searchIndex->deleteObject($item->AlgoliaUUID);
         }
+
+        return true;
     }
 
     /**

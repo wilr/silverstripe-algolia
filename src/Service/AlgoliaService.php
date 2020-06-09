@@ -59,7 +59,7 @@ class AlgoliaService
         if (!$item) {
             return array_map(
                 function ($indexName) {
-                    return $this->environmentizeIndex($indexName);
+                    return $this->getClient()->initIndex($this->environmentizeIndex($indexName));
                 },
                 array_keys($this->indexes)
             );
