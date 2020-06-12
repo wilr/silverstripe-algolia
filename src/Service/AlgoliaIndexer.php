@@ -161,7 +161,7 @@ class AlgoliaIndexer
                                 $value = $dbField->getValue();
                                 break;
                             case DBHTMLText::class:
-                                $fieldData = $dbField->NoHTML();
+                                $fieldData = $dbField->Plain();
                                 $fieldLength = mb_strlen($fieldData, '8bit');
 
                                 if ($fieldLength > $maxFieldSize) {
