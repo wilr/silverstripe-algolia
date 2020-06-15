@@ -236,10 +236,14 @@ class AlgoliaObjectExtension extends DataExtension
     public function onBeforeWrite()
     {
         if (!$this->owner->AlgoliaUUID) {
-            $uuid = Uuid::uuid4();
-
-            $this->owner->AlgoliaUUID = $uuid->toString();
+            $this->owner->assignAlgoliaUUID();
         }
+    }
+
+    public function assignAlgoliaUUID()
+    {
+        $uuid = Uuid::uuid4();
+        $this->owner->AlgoliaUUID = $uuid->toString();
     }
 
     /**
