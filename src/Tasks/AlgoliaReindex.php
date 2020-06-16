@@ -103,6 +103,11 @@ class AlgoliaReindex extends BuildTask
                     continue;
                 }
 
+                // Set AlgoliaUUID, in case it wasn't previously set
+                if (!$item->AlgoliaUUID) {
+                    $item->assignAlgoliaUUID();
+                }
+
                 $batchKey = get_class($item);
 
                 if (!isset($currentBatches[$batchKey])) {
