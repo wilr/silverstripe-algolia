@@ -111,7 +111,7 @@ class AlgoliaIndexer
     {
         $toIndex = [
             'objectID' => $item->AlgoliaUUID,
-            'objectSilverstripeID' => $item->ID,
+            'objectSilverstripeUUID' => $item->ID,
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
             'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),
