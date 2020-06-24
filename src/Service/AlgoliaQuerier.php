@@ -31,7 +31,7 @@ class AlgoliaQuerier
         if ($results && isset($results['hits'])) {
             foreach ($results['hits'] as $hit) {
                 $className = isset($hit['objectClassName']) ? $hit['objectClassName'] : null;
-                $id = isset($hit['objectSilverstripeUUID']) ? $hit['objectSilverstripeUUID'] : null;
+                $id = isset($hit['objectSilverstripeID']) ? $hit['objectSilverstripeID'] : null;
 
                 if (!$id || !$className) {
                     // ignore.
