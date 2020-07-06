@@ -30,34 +30,54 @@ class AlgoliaReindex extends BuildTask
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo();
 
-        $algoliaService = Injector::inst()->create(AlgoliaService::class);
-        $targetClass = SiteTree::class;
-        $additionalFiltering = '';
+        $targetClass = '';
+        $filter = '';
 
         if ($request->getVar('onlyClass')) {
             $targetClass = $request->getVar('onlyClass');
         }
 
         if ($request->getVar('filter')) {
-            $additionalFiltering = $request->getVar('filter');
+            $filter = $request->getVar('filter');
         }
 
-        if ($request->getVar('forceAll')) {
-            $items = Versioned::get_by_stage(
-                $targetClass,
-                'Live',
-                $additionalFiltering
-            );
+        if (!$request->getVar('forceAll') && !$filter) {
+            $filter = 'AlgoliaIndexed IS NULL';
+        }
+
+        if ($targetClass) {
+            $this->indexClass($targetClass, $filter);
         } else {
-            $items = Versioned::get_by_stage(
-                $targetClass,
-                'Live',
-                ($additionalFiltering)
-                    ? $additionalFiltering
-                    : 'AlgoliaIndexed IS NULL OR AlgoliaIndexed < (NOW() - INTERVAL 2 HOUR)'
-            );
+            $algoliaService = Injector::inst()->create(AlgoliaService::class);
+
+            // find all classes we have to index and do so
+            foreach ($algoliaService->indexes as $index) {
+                $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
+
+                if ($classes) {
+                    foreach ($classes as $candidate) {
+                        $this->indexClass($candidate, $filter);
+                    }
+                }
+            }
+        }
+    }
+
+    public function indexClass($targetClass, $filter = '')
+    {
+        $inst = $targetClass::create();
+
+        if ($inst->hasExtension(Versioned::class)) {
+            $items = Versioned::get_by_stage($targetClass, 'Live', $filter);
+        } else {
+            $items = $inst::get();
+
+            if ($filter) {
+                $items = $items->where($filter);
+            }
         }
 
+        $algoliaService = Injector::inst()->create(AlgoliaService::class);
         $count = 0;
         $skipped = 0;
         $errored = 0;
@@ -67,8 +87,9 @@ class AlgoliaReindex extends BuildTask
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
 
         echo sprintf(
-            'Found %s pages remaining to index, will export in batches of %s, grouped by type. %s',
+            'Found %s %s remaining to index, will export in batches of %s, %s batches total %s',
             $total,
+            $targetClass,
             $batchSize,
             $batchesTotal,
             PHP_EOL
@@ -106,7 +127,18 @@ class AlgoliaReindex extends BuildTask
                 // Set AlgoliaUUID, in case it wasn't previously set
                 if (!$item->AlgoliaUUID) {
                     $item->assignAlgoliaUUID();
-                    $item->write();
+
+                    try {
+                        $item->write();
+                    } catch (Exception $e) {
+                        var_dump($e);
+                        die();
+                        Injector::inst()->get(LoggerInterface::class)->error($e);
+
+                        $errored++;
+
+                        continue;
+                    }
                 }
 
                 $batchKey = get_class($item);
