@@ -36,4 +36,24 @@ class AlgoliaIndexerTest extends SapphireTest
         $this->assertArrayHasKey('objectID', $map);
         $this->assertEquals($map['objectTitle'], 'Foobar');
     }
+
+    public function testDeleteExistingItem()
+    {
+        $object = AlgoliaTestObject::create();
+        $object->Title = 'Delete This';
+        $object->write();
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $deleted = $indexer->deleteItem($object->getClassName(), $object->AlgoliaUUID);
+
+        return $this->assertTrue($deleted);
+    }
+
+    public function testDeleteNonExistentItem()
+    {
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $deleted = $indexer->deleteItem(AlgoliaTestObject::class, 9999999);
+
+        return $this->assertFalse($deleted);
+    }
 }
