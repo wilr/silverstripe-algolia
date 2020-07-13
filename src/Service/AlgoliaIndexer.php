@@ -257,10 +257,13 @@ class AlgoliaIndexer
      * Remove an item ID from the index. As this would usually be when an object
      * is deleted in Silverstripe we cannot rely on the object existing.
      *
-     * @param DataObject $item
+     * @param string $itemClass
+     * @param int $itemUUID
      */
-    public function deleteItem($item)
+    public function deleteItem($itemClass, $itemUUID)
     {
+        $item = DataObject::get_one($itemClass, ['AlgoliaUUID' => $itemUUID]);
+
         if (!$item || !$item->isInDB()) {
             return false;
         }

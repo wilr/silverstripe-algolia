@@ -215,14 +215,14 @@ class AlgoliaObjectExtension extends DataExtension
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         if ($this->config()->get('use_queued_indexing')) {
-            $indexDeleteJob = new AlgoliaDeleteItemJob($this->owner->AlgoliaUUID);
+            $indexDeleteJob = new AlgoliaDeleteItemJob($this->owner->getClassName(), $this->owner->AlgoliaUUID);
 
             QueuedJobService::singleton()->queueJob($indexDeleteJob);
 
             $this->markAsRemovedFromAlgoliaIndex();
         } else {
             try {
-                $indexer->deleteItem($this->owner->AlgoliaUUID);
+                $indexer->deleteItem($this->owner->getClassName(), $this->owner->AlgoliaUUID);
 
                 $this->markAsRemovedFromAlgoliaIndex();
             } catch (Exception $e) {
