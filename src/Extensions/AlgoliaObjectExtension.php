@@ -148,7 +148,7 @@ class AlgoliaObjectExtension extends DataExtension
         }
 
         if ($this->config()->get('use_queued_indexing')) {
-            $indexJob = new AlgoliaIndexItemJob($this->owner->AlgoliaUUID);
+            $indexJob = new AlgoliaIndexItemJob($this->owner->ClassName, $this->owner->ID);
             QueuedJobService::singleton()->queueJob($indexJob);
 
             return true;
