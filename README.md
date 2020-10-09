@@ -27,6 +27,8 @@ composer require "wilr/silverstripe-algolia"
 
 :ballot_box_with_check: Easily configure search configuration and indexes via YAML and PHP.
 
+:ballot_box_with_check: Indexes your webpage template so supports Elemental and custom fields out of the box
+
 ## Documentation
 
 Algolia’s search-as-a-service and full suite of APIs allow teams to easily
@@ -236,3 +238,29 @@ be run via CLI
 ```
 
 Will output the Algolia data structure for the Page with the ID of '1'.
+
+## Elemental Support
+
+Out of the box this module scrapes the webpage's `main` HTML section and stores it in a `objectForTemplate` field in Algolia. This content is parsed via the `AlgoliaPageCrawler` class. 
+
+```html
+<main>
+     $ElementalArea
+    <!-- will be indexed via Algolia -->
+</main>
+```
+
+If this behaviour is undesirable then it can be disabled via YAML.
+
+```
+Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer:
+  include_page_content: false
+```
+
+Or you can specify the HTML selector you do want to index using YAML. For instance to index any elements with a `data-index` attribute.
+
+```
+Wilr\SilverStripe\Algolia\Service\AlgoliaPageCrawler:
+  content_xpath_selector: '//[data-index]'
+```
+
