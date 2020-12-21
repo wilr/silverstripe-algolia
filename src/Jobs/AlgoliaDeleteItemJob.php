@@ -5,7 +5,6 @@ namespace Wilr\Silverstripe\Algolia\Jobs;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataObject;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
@@ -20,7 +19,7 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
      * @param string $itemClass
      * @param int    $itemUUID
      */
-    public function __construct($itemClass, $itemUUID)
+    public function __construct($itemClass = null, $itemUUID = null)
     {
         $this->itemClass = $itemClass;
         $this->itemUUID = $itemUUID;
