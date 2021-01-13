@@ -257,6 +257,16 @@ class AlgoliaObjectExtension extends DataExtension
     }
 
     /**
+     * Ensure each record has unique UUID
+     */
+    public function onBeforeDuplicate()
+    {
+        $this->owner->assignAlgoliaUUID();
+        $this->owner->AlgoliaIndexed = null;
+        $this->owner->AlgoliaError = null;
+    }
+
+    /**
      * @return array
      */
     public function getAlgoliaIndexes()
