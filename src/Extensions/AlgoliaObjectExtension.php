@@ -126,11 +126,17 @@ class AlgoliaObjectExtension extends DataExtension
 
         if ($table) {
             $newValue = $isDeleted ? 'null' : 'NOW()';
+            // Also ensure Live and Draft UUIDs are the same in case Live didn't previously have a UUID
+            $uuid = "'" . $this->owner->AlgoliaUUID . "'";
             DB::query(sprintf("UPDATE %s SET AlgoliaIndexed = $newValue WHERE ID = %s", $table, $this->owner->ID));
 
             if ($this->owner->hasExtension('SilverStripe\Versioned\Versioned')) {
                 DB::query(
-                    sprintf("UPDATE %s_Live SET AlgoliaIndexed = $newValue WHERE ID = %s", $table, $this->owner->ID)
+                    sprintf(
+                        "UPDATE %s_Live SET AlgoliaIndexed = $newValue, AlgoliaUUID = $uuid WHERE ID = %s",
+                        $table,
+                        $this->owner->ID
+                    )
                 );
             }
         }
