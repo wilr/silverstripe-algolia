@@ -203,6 +203,9 @@ or to fetch a `PaginatedList` of results from Algolia, create a method on your
 `Controller` subclass to call `Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier`
 
 ```php
+<?php
+
+use SilverStripe\Core\Injector\Injector;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier;
 
 class PageController extends ContentController
@@ -220,7 +223,7 @@ class PageController extends ContentController
         return [
             'Title' => 'Search Results',
             'Results' => $results
-        ]
+        ];
     }
 }
 ```
