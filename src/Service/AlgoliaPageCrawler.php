@@ -8,8 +8,10 @@ use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Controllers\ModelAsController;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\View\SSViewer;
 
 /**
  * Fetches the main content off the page to index. This handles more complex
@@ -39,36 +41,47 @@ class AlgoliaPageCrawler
         $this->item = $item;
     }
 
-    public function getMainContent()
+    public function getMainContent(): string
     {
         if (!$this->item instanceof SiteTree) {
             return '';
         }
 
+        $selector = $this->config()->get('content_xpath_selector');
+
+        if (!$selector) {
+            return '';
+        }
+
+        // Enable frontend themes in order to correctly render the elements as
+        // they would be for the frontend
+        Config::nest();
+        SSViewer::set_themes(SSViewer::config()->get('themes'));
+
         $controller = ModelAsController::controller_for($this->item);
         $page = '';
+        $output = '';
 
         try {
+            /** @var DBHTMLText $page */
             $page = $controller->render();
+
+            if ($page) {
+                libxml_use_internal_errors(true);
+                $dom = new DOMDocument();
+                $dom->loadHTML($page->forTemplate());
+                $xpath = new DOMXPath($dom);
+                $nodes = $xpath->query($selector);
+
+                if (isset($nodes[0])) {
+                    $output = $nodes[0]->nodeValue;
+                }
+            }
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
 
-        $output = '';
-
-        // just get the interal content for the page.
-        if ($page) {
-            libxml_use_internal_errors(true);
-            $dom = new DOMDocument();
-            $dom->loadHTML($page->forTemplate());
-            $xpath = new DOMXPath($dom);
-            $selector = $this->config()->get('content_xpath_selector');
-            $nodes = $xpath->query($selector);
-
-            if (isset($nodes[0])) {
-                $output = $nodes[0]->nodeValue;
-            }
-        }
+        Config::unnest();
 
         return $output;
     }
