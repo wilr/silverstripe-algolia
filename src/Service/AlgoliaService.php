@@ -32,7 +32,6 @@ class AlgoliaService
     {
         if (!$this->client) {
             if (!$this->adminApiKey) {
-
                 throw new Exception('No adminApiKey configured for '. self::class);
             }
 
