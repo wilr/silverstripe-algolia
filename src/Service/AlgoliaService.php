@@ -8,6 +8,8 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Dev\Debug;
+use SilverStripe\Security\Security;
 
 class AlgoliaService
 {
@@ -56,10 +58,30 @@ class AlgoliaService
      */
     public function initIndexes($item = null)
     {
+        if (!Security::database_is_ready()) {
+            return [];
+        }
+
+        try {
+            $client = $this->getClient();
+
+            if (!$client) {
+                return [];
+            }
+        } catch (Exception $e) {
+            Injector::inst()->create(LoggerInterface::class)->error($e);
+
+            if (Director::isDev()) {
+                Debug::message($e->getMessage());
+            }
+
+            return [];
+        }
+
         if (!$item) {
             return array_map(
-                function ($indexName) {
-                    return $this->getClient()->initIndex($this->environmentizeIndex($indexName));
+                function ($indexName) use ($client) {
+                    return $client->initIndex($this->environmentizeIndex($indexName));
                 },
                 array_keys($this->indexes)
             );
@@ -90,7 +112,7 @@ class AlgoliaService
         $output = [];
 
         foreach ($matches as $index) {
-            $output[$index] = $this->getClient()->initIndex($this->environmentizeIndex($index));
+            $output[$index] = $client->initIndex($this->environmentizeIndex($index));
         }
 
         return $output;
