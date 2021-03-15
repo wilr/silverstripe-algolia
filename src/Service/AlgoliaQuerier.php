@@ -3,6 +3,7 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Exception;
+use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\PaginatedList;
@@ -13,19 +14,38 @@ use SilverStripe\ORM\PaginatedList;
 class AlgoliaQuerier
 {
     /**
+     * @param string $selectedIndex
      * @param string $query
      * @param array  $searchParameters
      *
      * @return PaginatedList
      */
-    public function fetchResults($selectedIndex, $query, $searchParameters = [])
+    public function fetchResults($selectedIndex = null, $query = '', $searchParameters = [])
     {
         $service = Injector::inst()->get(AlgoliaService::class);
+        $results = false;
+        
+        if (!$selectedIndex) {
+            if (!function_exists('array_key_first')) {
+                function array_key_first(array $arr) {
+                    foreach($arr as $key => $unused) {
+                        return $key;
+                    }
+                    return NULL;
+                }
+            }
 
-        $selectedIndex = $service->environmentizeIndex($selectedIndex);
-        $index = $service->getClient()->initIndex($selectedIndex);
-        $results = $index->search($query, $searchParameters);
-
+            $selectedIndex = array_key_first($service->indexes);
+        }
+        
+        try {
+            $selectedIndex = $service->environmentizeIndex($selectedIndex);
+            $index = $service->getClient()->initIndex($selectedIndex);
+            $results = $index->search($query, $searchParameters);
+        } catch (Exception $e) {
+            Injector::inst()->get(LoggerInterface::class)->error($e);
+        }
+        
         $records = ArrayList::create();
 
         if ($results && isset($results['hits'])) {
@@ -43,10 +63,6 @@ class AlgoliaQuerier
 
                     if ($record && $record->canView()) {
                         $records->push($record);
-                    } else {
-                        // record no longer exists so trigger a delete for this
-                        // old record
-                        $this->cleanUpOldResult($className, $id);
                     }
                 } catch (Exception $e) {
                     //
@@ -62,10 +78,5 @@ class AlgoliaQuerier
             ->setPageLength($results['hitsPerPage']);
 
         return $output;
-    }
-
-    public function cleanUpOldResult($className, $objectID)
-    {
-        // @todo
     }
 }
