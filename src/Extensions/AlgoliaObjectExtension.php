@@ -24,6 +24,11 @@ class AlgoliaObjectExtension extends DataExtension
     use Configurable;
 
     /**
+     * @var boolean
+     */
+    private $ranSync = false;
+
+    /**
      * @config
      *
      * @var boolean
@@ -73,8 +78,18 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function requireDefaultRecords()
     {
+        if ($this->ranSync) {
+            return false;
+        }
+
+        $this->ranSync = true;
         $algolia = Injector::inst()->create(AlgoliaService::class);
-        $algolia->syncSettings();
+
+        try {
+            $algolia->syncSettings();
+        } catch (Exception $e) {
+            DB::alteration_message($e->getMessage(), 'error');
+        }
     }
 
     /**
