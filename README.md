@@ -212,11 +212,14 @@ class PageController extends ContentController
 {
     public function results()
     {
+        $hitsPerPage = 25;
+        $paginatedPageNum = floor($this->request->getVar('start') / $hitsPerPage);
+
         $results = Injector::inst()->get(AlgoliaQuerier::class)->fetchResults(
             'indexName',
             $this->request->getVar('search'), [
-                'page' => $this->request->getVar('start') ?: 0,
-                'hitsPerPage' => 25
+                'page' => $this->request->getVar('start') ? $paginatedPageNum : 0,
+                'hitsPerPage' => $hitsPerPage
             ]
         );
 
