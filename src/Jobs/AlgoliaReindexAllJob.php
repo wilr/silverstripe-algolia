@@ -72,7 +72,6 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
                 }
             }
         }
-
     }
 
     public function process()
