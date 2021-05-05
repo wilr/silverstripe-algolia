@@ -140,6 +140,10 @@ import but only need the active ones you can trigger the task as follows:
 /vendor/bin/sake dev/tasks/AlgoliaReindex "onlyClass=Vacancy&filter=ExpiryDate>NOW()"
 ```
 
+If you do not have access to a CLI (i.e Silverstripe Cloud) then you can also
+bulk reindex via a queued job `AlgoliaReindexAllJob`.
+
+
 ### Customising the indexed attributes (fields)
 
 By default only `ID`, `Title` and `Link`, `LastEdited` will be indexed from
@@ -247,7 +251,7 @@ Will output the Algolia data structure for the Page with the ID of '1'.
 
 ## Elemental Support
 
-Out of the box this module scrapes the webpage's `main` HTML section and stores it in a `objectForTemplate` field in Algolia. This content is parsed via the `AlgoliaPageCrawler` class. 
+Out of the box this module scrapes the webpage's `main` HTML section and stores it in a `objectForTemplate` field in Algolia. This content is parsed via the `AlgoliaPageCrawler` class.
 
 ```html
 <main>
