@@ -92,13 +92,13 @@ class AlgoliaReindex extends BuildTask
         return $items;
     }
 
-    public function indexItems($targetClass, $filter = '', $items)
+    public function indexItems($targetClass, $filter = '', $items = null)
     {
         $algoliaService = Injector::inst()->create(AlgoliaService::class);
         $count = 0;
         $skipped = 0;
         $errored = 0;
-        $total = $items->count();
+        $total = ($items) ? $items->count() : 0;
         $batchSize = $this->config()->get('batch_size');
         $batchesTotal = ($total > 0) ? (ceil($total / $batchSize)) : 0;
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
