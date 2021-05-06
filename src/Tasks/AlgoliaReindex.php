@@ -4,7 +4,6 @@ namespace Wilr\SilverStripe\Algolia\Tasks;
 
 use Exception;
 use Psr\Log\LoggerInterface;
-use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
@@ -15,6 +14,10 @@ use SilverStripe\Versioned\Versioned;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
+/**
+ * Bulk reindex all objects. Note that this should be run via cli, if you can,
+ * use the queuedjobs version `AlgoliaReindexAllJob`
+ */
 class AlgoliaReindex extends BuildTask
 {
     protected $title = 'Algolia Reindex';
@@ -56,14 +59,23 @@ class AlgoliaReindex extends BuildTask
 
                 if ($classes) {
                     foreach ($classes as $candidate) {
-                        $this->indexClass($candidate, $filter);
+                        $items = $this->getItems($candidate, $filter);
+
+                        if ($items->exists()) {
+                            $this->indexItems($candidate, $filter, $items);
+                        }
                     }
                 }
             }
         }
+
+        echo 'Done';
     }
 
-    public function indexClass($targetClass, $filter = '')
+    /**
+     * @return \SilverStripe\ORM\DataList
+     */
+    public function getItems($targetClass, $filter = '')
     {
         $inst = $targetClass::create();
 
@@ -77,6 +89,11 @@ class AlgoliaReindex extends BuildTask
             }
         }
 
+        return $items;
+    }
+
+    public function indexItems($targetClass, $filter = '', $items)
+    {
         $algoliaService = Injector::inst()->create(AlgoliaService::class);
         $count = 0;
         $skipped = 0;
@@ -131,8 +148,6 @@ class AlgoliaReindex extends BuildTask
                     try {
                         $item->write();
                     } catch (Exception $e) {
-                        var_dump($e);
-                        die();
                         Injector::inst()->get(LoggerInterface::class)->error($e);
 
                         $errored++;
