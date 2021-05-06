@@ -57,7 +57,8 @@ class AlgoliaPageCrawler
         // they would be for the frontend
         Config::nest();
         SSViewer::set_themes(SSViewer::config()->get('themes'));
-
+        
+        Requirements::clear();
         $controller = ModelAsController::controller_for($this->item);
         $page = '';
         $output = '';
@@ -80,7 +81,7 @@ class AlgoliaPageCrawler
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
-
+        Requirements::restore();
         Config::unnest();
 
         return $output;
