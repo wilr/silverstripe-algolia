@@ -4,6 +4,7 @@ namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use Exception;
+use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Core\ClassInfo;
@@ -136,15 +137,28 @@ class AlgoliaIndexer
         $specs = $item->config()->get('algolia_index_fields');
 
         if ($specs) {
+            $maxFieldSize = $this->config()->get('max_field_size_bytes');
+
             foreach ($specs as $attributeName) {
                 if (in_array($attributeName, $this->config()->get('attributes_blacklisted'))) {
                     continue;
                 }
 
-                $dbField = $item->relObject($attributeName);
-                $maxFieldSize = $this->config()->get('max_field_size_bytes');
+                // fetch the db object, or fallback to the getters but prefer
+                // the db object
+                try {
+                    $dbField = $item->relObject($attributeName);
+                } catch (LogicException $e) {
+                    $dbField = $item->{$attributeName};
+                }
 
-                if ($dbField && ($dbField->exists() || $dbField instanceof DBBoolean)) {
+                if (!$dbField) {
+                    continue;
+                }
+
+                if (is_string($dbField) || is_array($dbField)) {
+                    $attributes->push($attributeName, $dbField);
+                } elseif ($dbField->exists() || $dbField instanceof DBBoolean) {
                     if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
                         // has-many, many-many, has-one
                         $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
