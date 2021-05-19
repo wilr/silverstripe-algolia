@@ -202,7 +202,7 @@ class AlgoliaIndexer
                                 }
                                 break;
                             default:
-                                $value = $dbField->forTemplate();
+                                $value = @$dbField->forTemplate();
                         }
 
                         if ($hasContent) {
