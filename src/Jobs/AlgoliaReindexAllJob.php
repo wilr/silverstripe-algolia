@@ -86,7 +86,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
 
         $this->currentStep++;
 
-        list($class, $id) = explode('|', array_shift($this->indexData));
+        list($class, $id) = explode('|', array_shift($remainingChildren));
 
         $obj = DataObject::get_by_id($class, $id);
 
