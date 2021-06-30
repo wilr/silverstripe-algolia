@@ -49,7 +49,18 @@ class AlgoliaReindex extends BuildTask
         }
 
         if ($targetClass) {
-            $this->indexClass($targetClass, $filter);
+            $items = $this->getItems($targetClass, $filter);
+
+            if ($items->exists()) {
+                $this->indexItems($targetClass, $filter, $items);
+            } else {
+                echo sprintf(
+                    'Found 0 %s remaining to index which match filter (%s)%s',
+                    $targetClass,
+                    $filter,
+                    PHP_EOL
+                );
+            }
         } else {
             $algoliaService = Injector::inst()->create(AlgoliaService::class);
 
@@ -63,6 +74,13 @@ class AlgoliaReindex extends BuildTask
 
                         if ($items->exists()) {
                             $this->indexItems($candidate, $filter, $items);
+                        } else {
+                            echo sprintf(
+                                'Found 0 %s remaining to index which match filter (%s)%s',
+                                $targetClass,
+                                $filter,
+                                PHP_EOL
+                            );
                         }
                     }
                 }
@@ -73,6 +91,9 @@ class AlgoliaReindex extends BuildTask
     }
 
     /**
+     * @param string $targetClass
+     * @param string $filter
+     *
      * @return \SilverStripe\ORM\DataList
      */
     public function getItems($targetClass, $filter = '')
@@ -92,6 +113,11 @@ class AlgoliaReindex extends BuildTask
         return $items;
     }
 
+    /**
+     * @param string $targetClass
+     * @param string $filter
+     * @param DataList? $items
+     */
     public function indexItems($targetClass, $filter = '', $items = null)
     {
         $algoliaService = Injector::inst()->create(AlgoliaService::class);
@@ -104,9 +130,10 @@ class AlgoliaReindex extends BuildTask
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
 
         echo sprintf(
-            'Found %s %s remaining to index, will export in batches of %s, %s batches total %s',
+            'Found %s %s remaining to index which match filter (%s), will export in batches of %s, %s batches total %s',
             $total,
             $targetClass,
+            $filter,
             $batchSize,
             $batchesTotal,
             PHP_EOL
