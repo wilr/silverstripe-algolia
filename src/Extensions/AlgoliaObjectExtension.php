@@ -136,20 +136,35 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function touchAlgoliaIndexedDate($isDeleted = false)
     {
+        $newValue = $isDeleted ? 'null' : 'NOW()';
+        $this->updateAlgoliaFields([
+            'AlgoliaIndexed' => $newValue,
+            'AlgoliaUUID' => "'" . $this->owner->AlgoliaUUID . "'",
+        ]);
+    }
+
+    /**
+     * Update search metadata without triggering draft state etc
+     */
+    private function updateAlgoliaFields($fields)
+    {
         $schema = DataObject::getSchema();
         $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaIndexed');
 
-        if ($table) {
-            $newValue = $isDeleted ? 'null' : 'NOW()';
-            // Also ensure Live and Draft UUIDs are the same in case Live didn't previously have a UUID
-            $uuid = "'" . $this->owner->AlgoliaUUID . "'";
-            DB::query(sprintf("UPDATE %s SET AlgoliaIndexed = $newValue WHERE ID = %s", $table, $this->owner->ID));
+        if ($table && count($fields)) {
+            $sets = [];
+            foreach ($fields as $field => $value) {
+                $sets[] = "$field = $value";
+            }
+            $set = implode(', ', $sets);
+            DB::query(sprintf('UPDATE %s SET %s WHERE ID = %s', $table, $set, $this->owner->ID));
 
             if ($this->owner->hasExtension('SilverStripe\Versioned\Versioned')) {
                 DB::query(
                     sprintf(
-                        "UPDATE %s_Live SET AlgoliaIndexed = $newValue, AlgoliaUUID = $uuid WHERE ID = %s",
+                        'UPDATE %s_Live SET %s WHERE ID = %s',
                         $table,
+                        $set,
                         $this->owner->ID
                     )
                 );
@@ -185,6 +200,9 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function doImmediateIndexInAlgolia()
     {
+        if ($this->owner->indexEnabled() && min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
+            return false;
+        }
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         try {
@@ -257,14 +275,17 @@ class AlgoliaObjectExtension extends DataExtension
     public function onBeforeWrite()
     {
         if (!$this->owner->AlgoliaUUID) {
-            $this->owner->assignAlgoliaUUID();
+            $this->owner->assignAlgoliaUUID(false);
         }
     }
 
-    public function assignAlgoliaUUID()
+    public function assignAlgoliaUUID($writeImmediately = true)
     {
         $uuid = Uuid::uuid4();
         $this->owner->AlgoliaUUID = $uuid->toString();
+        if ($writeImmediately) {
+            $this->updateAlgoliaFields(['AlgoliaUUID' => "'" . $this->owner->AlgoliaUUID . "'"]);
+        }
     }
 
     /**
@@ -282,7 +303,7 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function onBeforeDuplicate()
     {
-        $this->owner->assignAlgoliaUUID();
+        $this->owner->assignAlgoliaUUID(false);
         $this->owner->AlgoliaIndexed = null;
         $this->owner->AlgoliaError = null;
     }

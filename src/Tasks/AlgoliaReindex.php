@@ -123,7 +123,6 @@ class AlgoliaReindex extends BuildTask
         $algoliaService = Injector::inst()->create(AlgoliaService::class);
         $count = 0;
         $skipped = 0;
-        $errored = 0;
         $total = ($items) ? $items->count() : 0;
         $batchSize = $this->config()->get('batch_size');
         $batchesTotal = ($total > 0) ? (ceil($total / $batchSize)) : 0;
@@ -171,16 +170,6 @@ class AlgoliaReindex extends BuildTask
                 // Set AlgoliaUUID, in case it wasn't previously set
                 if (!$item->AlgoliaUUID) {
                     $item->assignAlgoliaUUID();
-
-                    try {
-                        $item->write();
-                    } catch (Exception $e) {
-                        Injector::inst()->get(LoggerInterface::class)->error($e);
-
-                        $errored++;
-
-                        continue;
-                    }
                 }
 
                 $batchKey = get_class($item);
@@ -213,9 +202,8 @@ class AlgoliaReindex extends BuildTask
 
         Debug::message(
             sprintf(
-                "Number of objects indexed: %s, Errors: %s, Skipped %s",
+                "Number of objects indexed: %s, Skipped %s",
                 $count,
-                $errored,
                 $skipped
             )
         );

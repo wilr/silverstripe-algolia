@@ -2,7 +2,6 @@
 
 namespace Wilr\Silverstripe\Algolia\Jobs;
 
-use Exception;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataObject;
@@ -93,12 +92,6 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
         if ($obj && $obj->canIndexInAlgolia()) {
             if (!$obj->AlgoliaUUID) {
                 $obj->assignAlgoliaUUID();
-
-                try {
-                    $obj->write();
-                } catch (Exception $e) {
-                    Injector::inst()->get(LoggerInterface::class)->error($e);
-                }
             }
 
             if ($obj->AlgoliaUUID) {
