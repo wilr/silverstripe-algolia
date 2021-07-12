@@ -24,7 +24,7 @@ class AlgoliaQuerier
     {
         $service = Injector::inst()->get(AlgoliaService::class);
         $results = false;
-        
+
         if (!$selectedIndex) {
             if (!function_exists('array_key_first')) {
                 function array_key_first(array $arr)
@@ -38,7 +38,7 @@ class AlgoliaQuerier
 
             $selectedIndex = array_key_first($service->indexes);
         }
-        
+
         try {
             $selectedIndex = $service->environmentizeIndex($selectedIndex);
             $index = $service->getClient()->initIndex($selectedIndex);
@@ -46,7 +46,7 @@ class AlgoliaQuerier
         } catch (Exception $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
         }
-        
+
         $records = ArrayList::create();
 
         if ($results && isset($results['hits'])) {
@@ -55,8 +55,7 @@ class AlgoliaQuerier
                 $id = isset($hit['objectSilverstripeID']) ? $hit['objectSilverstripeID'] : null;
 
                 if (!$id || !$className) {
-                    // ignore.
-                    return;
+                    continue;
                 }
 
                 try {
@@ -66,7 +65,7 @@ class AlgoliaQuerier
                         $records->push($record);
                     }
                 } catch (Exception $e) {
-                    //
+                    Injector::inst()->get(LoggerInterface::class)->notice($e);
                 }
             }
         }

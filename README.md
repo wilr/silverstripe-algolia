@@ -47,10 +47,6 @@ DataObjects.
 First, sign up for Algolia.com account and install this module. Once installed,
 Configure the API keys via YAML (environment variables recommended).
 
-** :warning: this module will assume your indexes are setup as `dev_{IndexName}`,
-`test_{IndexName}` and `live_{IndexName}` where the result of your environment
-type is prefixed**
-
 *app/_config/algolia.yml*
 ```yml
 ---
@@ -75,6 +71,22 @@ SilverStripe\Core\Injector\Injector:
 Once the indexes and API keys are configured, run a `dev/build` to update the
 database and refresh the indexSettings. Alternatively you can run
 `AlgoliaConfigure` to manually rebuild the indexSettings.
+
+### Configuring the index names
+
+This module will assume your indexes are setup as `dev_{IndexName}`,
+`test_{IndexName}` and `live_{IndexName}` where the result of your environment
+type is prefixed to the names listed in the main YAML config.
+
+If you explictly want to disable the environment prefix (or use a custom
+approach) use the `ALGOLIA_PREFIX_INDEX_NAME` environment variable.
+
+```
+ALGOLIA_PREFIX_INDEX_NAME='dev_will'
+```
+
+Or for testing with live data on dev use `ALGOLIA_PREFIX_INDEX_NAME='live'`
+
 
 ### Defining Replica Indexes
 

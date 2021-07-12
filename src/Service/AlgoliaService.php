@@ -6,6 +6,7 @@ use Algolia\AlgoliaSearch\SearchClient;
 use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Director;
+use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\Debug;
@@ -119,13 +120,22 @@ class AlgoliaService
     }
 
     /**
+     * Prefixes the given indexName with the configured prefix, or environment
+     * type.
+     *
      * @param string $indexName
      *
      * @return string
      */
     public function environmentizeIndex($indexName)
     {
-        return sprintf("%s_%s", Director::get_environment_type(), $indexName);
+        $prefix = Environment::getEnv('ALGOLIA_PREFIX_INDEX_NAME');
+
+        if ($prefix === false) {
+            $prefix = Director::get_environment_type();
+        }
+
+        return sprintf("%s_%s", $prefix, $indexName);
     }
 
 
