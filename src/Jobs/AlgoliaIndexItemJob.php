@@ -98,11 +98,17 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
 
         $obj = DataObject::get_by_id($this->itemClass, $id);
 
-        if ($obj && $obj->canIndexInAlgolia()) {
+        if (!$obj) {
+            $this->addMessage('Record #'. $id . ' not found');
+        } elseif (!$obj->canIndexInAlgolia()) {
+            $this->addMessage('Record #'. $id .' not indexed, canIndexInAlgolia returned false');
+        } else {
             if (!$obj->AlgoliaUUID) {
                 $obj->assignAlgoliaUUID();
             }
             $obj->doImmediateIndexInAlgolia();
+
+            $this->addMessage('Record #'. $id .' indexed as objectID '. $obj->AlgoliaUUID);
 
             unset($obj);
         }

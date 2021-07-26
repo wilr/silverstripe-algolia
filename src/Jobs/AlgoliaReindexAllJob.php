@@ -11,8 +11,8 @@ use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 use Wilr\SilverStripe\Algolia\Tasks\AlgoliaReindex;
 
 /**
- * Reindex everything via a queued job (when AlgoliaReindex task won't do)
- *
+ * Reindex everything via a queued job (when AlgoliaReindex task won't do). This
+ * supports reindexing via batch operations. Algolia limits apply.
  */
 class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
 {
@@ -34,7 +34,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
 
     public function getTitle()
     {
-        return 'Algolia reindexing everything';
+        return 'Algolia re-indexing all records';
     }
 
     public function getJobType()
@@ -54,59 +54,63 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
 
         $filters = $this->config()->get('reindexing_default_filters');
 
-        // find all classes we have to index and do so
+        // find all classes we have to index and add them to the indexData map
+        // in groups of batch size, this setup operation does the heavy lifting
+        // and process simply handles one batch at a time.
         foreach ($algoliaService->indexes as $index) {
             $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
 
             if ($classes) {
                 foreach ($classes as $candidate) {
                     $filter = (isset($filters[$candidate])) ? $filters[$candidate] : '';
+                    $count = 0;
 
                     foreach ($task->getItems($candidate, $filter)->column('ID') as $id) {
-                        $key = $candidate . '|'. $id;
+                        $count++;
 
-                        $this->indexData[$key] = $key;
+                        if (!isset($this->indexData[$candidate])) {
+                            $this->indexData[$candidate] = [];
+                        }
+
+                        $this->indexData[$candidate][] = $id;
                         $this->totalSteps++;
                     }
+
+                    $this->addMessage('Indexing '. $count . ' '. $candidate . ' instances with filters '. $filter );
                 }
             }
         }
     }
 
+    /**
+     * Index data is in groups of 20.
+     */
     public function process()
     {
         $remainingChildren = $this->indexData;
 
-        if (!count($remainingChildren)) {
+        if (!$remainingChildren || empty($remainingChildren)) {
             $this->isComplete = true;
 
             return;
         }
 
-        $this->currentStep++;
+        $task = new AlgoliaReindex();
+        $batchSize = $task->config()->get('batch_size');
 
-        list($class, $id) = explode('|', array_shift($remainingChildren));
+        foreach ($remainingChildren as $class => $ids) {
+            $take = array_slice($ids, 0, $batchSize);
+            $this->indexData[$class] = array_slice($ids, $batchSize);
 
-        $obj = DataObject::get_by_id($class, $id);
+            $take = array_slice($ids, 0, $batchSize);
 
-        if ($obj && $obj->canIndexInAlgolia()) {
-            if (!$obj->AlgoliaUUID) {
-                $obj->assignAlgoliaUUID();
+            if (!empty($take)) {
+                $this->currentStep += count($take);
+                $task->indexItems($class, '', DataObject::get($class)->filter('ID', $take), false);
+                $this->addMessage('Indexing '. $class . ' ['. implode(', ', $take) . ']');
+            } else {
+                unset($this->indexData[$class]);
             }
-
-            if ($obj->AlgoliaUUID) {
-                $obj->doImmediateIndexInAlgolia();
-            }
-        }
-
-        $this->addMessage(sprintf('[%s/%s], %s', $this->currentStep, $this->totalSteps, $class . '#'. $id));
-
-        $this->indexData = $remainingChildren;
-
-        if (!count($remainingChildren)) {
-            $this->isComplete = true;
-
-            return;
         }
     }
 }
