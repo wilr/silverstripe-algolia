@@ -225,6 +225,8 @@ class AlgoliaObjectExtension extends DataExtension
                 )
             );
 
+            $this->owner->AlgoliaError = $e->getMessage();
+
             return false;
         }
     }
@@ -246,7 +248,7 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function removeFromAlgolia()
     {
-        if (!$this->owner->AlgoliaIndexed) {
+        if (!$this->owner->AlgoliaUUID) {
             // Not in the index, so skipping
             return false;
         }
@@ -283,6 +285,7 @@ class AlgoliaObjectExtension extends DataExtension
     {
         $uuid = Uuid::uuid4();
         $this->owner->AlgoliaUUID = $uuid->toString();
+
         if ($writeImmediately) {
             $this->updateAlgoliaFields(['AlgoliaUUID' => "'" . $this->owner->AlgoliaUUID . "'"]);
         }
