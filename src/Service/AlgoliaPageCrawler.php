@@ -8,6 +8,9 @@ use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Controllers\ModelAsController;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Control\Controller;
+use SilverStripe\Control\HTTPRequest;
+use SilverStripe\Control\Session;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
@@ -58,9 +61,22 @@ class AlgoliaPageCrawler
         // they would be for the frontend
         Config::nest();
         SSViewer::set_themes(SSViewer::config()->get('themes'));
-        
+
         Requirements::clear();
+
         $controller = ModelAsController::controller_for($this->item);
+        $current = Controller::has_curr() ? Controller::curr() : null;
+
+        if ($current) {
+            $controller->setRequest($current->getRequest());
+        } else {
+            $request = new HTTPRequest('GET', $this->item->Link());
+            $request->setSession(new Session([]));
+
+            $controller->setRequest($request);
+            $controller->pushCurrent();
+        }
+
         $page = '';
         $output = '';
 
