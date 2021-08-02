@@ -23,7 +23,12 @@ class AlgoliaConfigure extends BuildTask
     public function run($request)
     {
         $service = Injector::inst()->get(AlgoliaService::class);
-        $service->syncSettings();
+
+        if ($service->syncSettings()) {
+            echo 'Success.' . PHP_EOL;
+        } else {
+            echo 'An error occurred while syncing the settings. Please check your error logs.'. PHP_EOL;
+        }
 
         echo 'Done.';
     }

@@ -144,12 +144,12 @@ class AlgoliaService
      *
      * This runs automatically on dev/build operations.
      */
-    public function syncSettings()
+    public function syncSettings(): bool
     {
         $config = $this->indexes;
 
         if (!$config) {
-            return;
+            return false;
         }
 
         foreach ($config as $index => $data) {
@@ -177,9 +177,14 @@ class AlgoliaService
                         if (Director::isDev()) {
                             throw $e;
                         }
+
+                        return false;
                     }
                 }
             }
         }
+
+
+        return true;
     }
 }
