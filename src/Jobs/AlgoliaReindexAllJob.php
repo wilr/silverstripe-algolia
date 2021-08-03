@@ -28,6 +28,11 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
      */
     private static $reindexing_default_filters = [];
 
+    /**
+     * @config
+     */
+    private static $use_batching = true;
+
     public function __construct($params = array())
     {
     }
@@ -96,18 +101,42 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
         }
 
         $task = new AlgoliaReindex();
+
         $batchSize = $task->config()->get('batch_size');
+        $batching = $this->config()->get('use_batching');
 
         foreach ($remainingChildren as $class => $ids) {
             $take = array_slice($ids, 0, $batchSize);
             $this->indexData[$class] = array_slice($ids, $batchSize);
 
-            $take = array_slice($ids, 0, $batchSize);
-
             if (!empty($take)) {
                 $this->currentStep += count($take);
-                $task->indexItems($class, '', DataObject::get($class)->filter('ID', $take), false);
-                $this->addMessage('Indexing '. $class . ' ['. implode(', ', $take) . ']');
+
+                if ($batching) {
+                    if ($task->indexItems($class, '', DataObject::get($class)->filter('ID', $take), false)) {
+                        $this->addMessage('Successfully indexing '. $class . ' ['. implode(', ', $take) . ']');
+                    } else {
+                        $this->addMessage('Error indexing '. $class . ' ['. implode(', ', $take) . ']');
+                    }
+                } else {
+                    $items = DataObject::get($class)->filter('ID', $take);
+
+                    foreach ($items as $item) {
+                        if ($task->indexItem($item)) {
+                            $this->addMessage('Successfully indexed '. $class . ' ['. $item->ID . ']');
+                        } else {
+                            $this->addMessage('Error indexing '. $class . ' ['. $item->ID . ']');
+                        }
+                    }
+                }
+
+                $errors = $task->getErrors();
+
+                if (!empty($errors)) {
+                    $this->addMessage(implode(', ', $errors));
+
+                    $task->clearErrors();
+                }
             } else {
                 unset($this->indexData[$class]);
             }

@@ -28,6 +28,8 @@ class AlgoliaReindex extends BuildTask
 
     private static $batch_size = 20;
 
+    protected $errors = [];
+
     public function run($request)
     {
         Environment::increaseMemoryLimitTo();
@@ -114,10 +116,37 @@ class AlgoliaReindex extends BuildTask
     }
 
     /**
+     * @param DataObject $obj
+     *
+     * @return bool
+     */
+    public function indexItem($obj = null): bool
+    {
+        if (!$obj) {
+            return false;
+        } elseif (!$obj->canIndexInAlgolia()) {
+            return false;
+        } else {
+            if (!$obj->AlgoliaUUID) {
+                $obj->assignAlgoliaUUID();
+            }
+
+            if ($obj->doImmediateIndexInAlgolia()) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+
+    /**
      * @param string $targetClass
      * @param string $filter
      * @param DataList? $items
      * @param bool $output;
+     *
+     * @return bool|string
      */
     public function indexItems($targetClass, $filter = '', $items = null, $output = true)
     {
@@ -125,7 +154,7 @@ class AlgoliaReindex extends BuildTask
         $count = 0;
         $skipped = 0;
         $total = ($items) ? $items->count() : 0;
-        $batchSize = $this->config()->get('batch_size');
+        $batchSize = $this->config()->get('batch_size') ?? 25;
         $batchesTotal = ($total > 0) ? (ceil($total / $batchSize)) : 0;
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
@@ -144,7 +173,7 @@ class AlgoliaReindex extends BuildTask
         $pos = 0;
 
         if ($total < 1) {
-            return;
+            return false;
         }
 
         $currentBatches = [];
@@ -209,14 +238,14 @@ class AlgoliaReindex extends BuildTask
             }
         }
 
+        $summary = sprintf(
+            "Number of objects indexed: %s, Skipped %s",
+            $count,
+            $skipped
+        );
+
         if ($output) {
-            Debug::message(
-                sprintf(
-                    "Number of objects indexed: %s, Skipped %s",
-                    $count,
-                    $skipped
-                )
-            );
+            Debug::message($summary);
 
             Debug::message(
                 sprintf(
@@ -227,6 +256,8 @@ class AlgoliaReindex extends BuildTask
                 )
             );
         }
+
+        return $summary;
     }
 
     /**
@@ -236,13 +267,20 @@ class AlgoliaReindex extends BuildTask
      *
      * @return bool
      */
-    public function indexBatch($items)
+    public function indexBatch($items): bool
     {
         $indexes = Injector::inst()->create(AlgoliaService::class)->initIndexes($items[0]);
 
         try {
+
             foreach ($indexes as $index) {
-                $index->saveObjects($items);
+                $result = $index->saveObjects($items, [
+                    'autoGenerateObjectIDIfNotExist' => true
+                ]);
+
+                if (!$result->valid()) {
+                    return false;
+                }
             }
 
             return true;
@@ -253,7 +291,28 @@ class AlgoliaReindex extends BuildTask
                 Debug::message($e->getMessage());
             }
 
+            $this->errors[] = $e->getMessage();
+
             return false;
         }
     }
+
+    /**
+     * @return string[]
+     */
+    public function getErrors()
+    {
+        return $this->errors;
+    }
+
+    /**
+     * @return $this
+     */
+    public function clearErrors()
+    {
+        $this->errors = [];
+
+        return $this;
+    }
+
 }
