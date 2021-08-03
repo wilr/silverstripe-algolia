@@ -28,6 +28,14 @@ class AlgoliaReindex extends BuildTask
 
     private static $batch_size = 20;
 
+    /**
+     * An optional array of default filters to apply when doing the reindex
+     * i.e for indexing Page subclasses you may wish to exclude expired pages.
+     *
+     * @config
+     */
+    private static $reindexing_default_filters = [];
+
     protected $errors = [];
 
     public function run($request)
@@ -37,9 +45,14 @@ class AlgoliaReindex extends BuildTask
 
         $targetClass = '';
         $filter = '';
+        $defaultFilters = $this->config()->get('reindexing_default_filters');
 
         if ($request->getVar('onlyClass')) {
             $targetClass = $request->getVar('onlyClass');
+
+            if ($defaultFilters && isset($defaultFilters[$targetClass])) {
+                $filter = $defaultFilters[$targetClass];
+            }
         }
 
         if ($request->getVar('filter')) {

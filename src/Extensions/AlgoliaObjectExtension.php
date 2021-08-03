@@ -203,6 +203,7 @@ class AlgoliaObjectExtension extends DataExtension
         if ($this->owner->indexEnabled() && min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
             return false;
         }
+
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         try {

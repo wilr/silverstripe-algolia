@@ -96,6 +96,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
 
         if (!$remainingChildren || empty($remainingChildren)) {
             $this->isComplete = true;
+            $this->addMessage('Done!');
 
             return;
         }
