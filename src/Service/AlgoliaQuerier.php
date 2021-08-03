@@ -70,12 +70,15 @@ class AlgoliaQuerier
             }
         }
 
-        $output = PaginatedList::create($records)
-            ->setCurrentPage($results['page'] + 1)
-            ->setTotalItems($results['nbHits'])
-            ->setLimitItems(false)
-            ->setPageStart($results['page'] * $results['hitsPerPage'])
-            ->setPageLength($results['hitsPerPage']);
+        $output = PaginatedList::create($records);
+
+        if ($results) {
+            $output = $output->setCurrentPage($results['page'] + 1)
+                ->setTotalItems($results['nbHits'])
+                ->setLimitItems(false)
+                ->setPageStart($results['page'] * $results['hitsPerPage'])
+                ->setPageLength($results['hitsPerPage']);
+        }
 
         return $output;
     }

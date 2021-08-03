@@ -26,7 +26,7 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
 
         if ($itemIds) {
             if (!is_array($itemIds)) {
-                $this->itemIds = [$itemIds];
+                $this->itemIds = explode(',', $itemIds);
             } else {
                 $this->itemIds = $itemIds;
             }
@@ -116,7 +116,7 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
             unset($obj);
         }
 
-        $this->remainingChildren = $remainingChildren;
+        $this->remainingIds = $remainingChildren;
 
         if (!count($remainingChildren)) {
             $this->isComplete = true;
