@@ -14,6 +14,11 @@ use SilverStripe\ORM\PaginatedList;
 class AlgoliaQuerier
 {
     /**
+     * @var array|null $lastResult
+     */
+    protected $lastResult = null;
+
+    /**
      * @param string $selectedIndex
      * @param string $query
      * @param array  $searchParameters
@@ -70,6 +75,8 @@ class AlgoliaQuerier
             }
         }
 
+        $this->lastResult = $results;
+
         $output = PaginatedList::create($records);
 
         if ($results) {
@@ -81,5 +88,13 @@ class AlgoliaQuerier
         }
 
         return $output;
+    }
+
+    /**
+     * @return array|null
+     */
+    public function getLastResult()
+    {
+        return $this->lastResult;
     }
 }
