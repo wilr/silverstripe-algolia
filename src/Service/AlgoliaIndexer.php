@@ -56,18 +56,26 @@ class AlgoliaIndexer
      *
      * @param DataObject $item
      *
-     * @return $this
+     * @return boolean
      */
     public function indexItem($item)
     {
         $searchIndexes = $this->getService()->initIndexes($item);
         $fields = $this->exportAttributesFromObject($item);
 
-        foreach ($searchIndexes as $searchIndex) {
-            $searchIndex->saveObject($fields->toArray());
+        if ($searchIndexes) {
+            foreach ($searchIndexes as $searchIndex) {
+                $result = $searchIndex->saveObject($fields->toArray());
+
+                if (!$result->valid()) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        return $this;
+        return false;
     }
 
     /**
@@ -113,6 +121,7 @@ class AlgoliaIndexer
         $toIndex = [
             'objectID' => $item->AlgoliaUUID,
             'objectSilverstripeID' => $item->ID,
+            'objectIndexedTimestamp' => date('c'),
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
             'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),

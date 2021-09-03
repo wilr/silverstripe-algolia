@@ -9,6 +9,7 @@ use SilverStripe\ORM\PaginatedList;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
+use Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension;
 
 class AlgoliaQuerierTest extends SapphireTest
 {
@@ -16,6 +17,10 @@ class AlgoliaQuerierTest extends SapphireTest
 
     protected static $extra_dataobjects = [
         AlgoliaTestObject::class
+    ];
+
+    protected static $required_extensions = [
+        AlgoliaTestObject::class => AlgoliaObjectExtension::class
     ];
 
     public static function setUpBeforeClass()

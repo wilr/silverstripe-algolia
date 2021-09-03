@@ -7,6 +7,7 @@ use SilverStripe\Dev\SapphireTest;
 use SilverStripe\ORM\DataObjectSchema;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
+use Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension;
 
 class AlgoliaIndexerTest extends SapphireTest
 {
@@ -14,6 +15,10 @@ class AlgoliaIndexerTest extends SapphireTest
 
     protected static $extra_dataobjects = [
         AlgoliaTestObject::class
+    ];
+
+    protected static $required_extensions = [
+        AlgoliaTestObject::class => AlgoliaObjectExtension::class
     ];
 
     public static function setUpBeforeClass()

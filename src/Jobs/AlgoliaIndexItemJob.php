@@ -31,10 +31,7 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
                 $this->itemIds = $itemIds;
             }
         }
-
-        $this->remainingIds = $this->itemIds;
     }
-
 
     /**
      * Defines the title of the job.
@@ -72,11 +69,11 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
      */
     public function setup()
     {
-        if (!count($this->remainingIds)) {
-            $this->isComplete = true;
+        parent::setup();
 
-            return;
-        }
+        $this->remainingIds = $this->itemIds;
+        $this->currentStep = 0;
+        $this->totalSteps = count($this->remainingIds);
     }
 
     /**
@@ -86,7 +83,7 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
     {
         $remainingChildren = $this->remainingIds;
 
-        if (!count($remainingChildren)) {
+        if (!$remainingChildren || !count($remainingChildren)) {
             $this->isComplete = true;
 
             return;

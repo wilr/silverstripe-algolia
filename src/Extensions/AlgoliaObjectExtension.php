@@ -198,7 +198,7 @@ class AlgoliaObjectExtension extends DataExtension
      *
      * @return bool
      */
-    public function doImmediateIndexInAlgolia()
+    public function doImmediateIndexInAlgolia(): bool
     {
         if ($this->owner->indexEnabled() && min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
             return false;
@@ -207,10 +207,11 @@ class AlgoliaObjectExtension extends DataExtension
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         try {
-            $indexer->indexItem($this->owner);
-            $this->touchAlgoliaIndexedDate();
+            if ($indexer->indexItem($this->owner)) {
+                $this->touchAlgoliaIndexedDate();
 
-            return true;
+                return true;
+            }
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
 
@@ -227,9 +228,9 @@ class AlgoliaObjectExtension extends DataExtension
             );
 
             $this->owner->AlgoliaError = $e->getMessage();
-
-            return false;
         }
+
+        return false;
     }
 
     /**
@@ -245,9 +246,9 @@ class AlgoliaObjectExtension extends DataExtension
     /**
      * Remove this item from Algolia
      *
-     * @return boolean false if failed or not indexed
+     * @return boolean
      */
-    public function removeFromAlgolia()
+    public function removeFromAlgolia(): bool
     {
         if (!$this->owner->AlgoliaUUID) {
             // Not in the index, so skipping
@@ -258,7 +259,6 @@ class AlgoliaObjectExtension extends DataExtension
 
         if ($this->config()->get('use_queued_indexing')) {
             $indexDeleteJob = new AlgoliaDeleteItemJob($this->owner->getClassName(), $this->owner->AlgoliaUUID);
-
             QueuedJobService::singleton()->queueJob($indexDeleteJob);
 
             $this->markAsRemovedFromAlgoliaIndex();
@@ -269,6 +269,7 @@ class AlgoliaObjectExtension extends DataExtension
                 $this->markAsRemovedFromAlgoliaIndex();
             } catch (Exception $e) {
                 Injector::inst()->create(LoggerInterface::class)->error($e);
+
                 return false;
             }
         }
