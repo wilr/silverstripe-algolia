@@ -2,9 +2,9 @@
 
 namespace Wilr\SilverStripe\Algolia\Service;
 
-use DOMDocument;
 use DOMXPath;
 use Exception;
+use Masterminds\HTML5;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Controllers\ModelAsController;
 use SilverStripe\CMS\Model\SiteTree;
@@ -33,12 +33,20 @@ class AlgoliaPageCrawler
 
     /**
      * Defines the xpath selector for the first element of content
-     * that should be indexed.
+     * that should be indexed. If blank, defaults to the `main` element
      *
      * @config
      * @var    string
      */
-    private static $content_xpath_selector = '//main';
+    private static $content_xpath_selector = '';
+
+    /**
+     * @config
+     *
+     * @var string
+     */
+    private static $content_element_tag = 'main';
+
 
     public function __construct($item)
     {
@@ -52,9 +60,11 @@ class AlgoliaPageCrawler
         }
 
         $selector = $this->config()->get('content_xpath_selector');
+        $useXpath = true;
 
         if (!$selector) {
-            return '';
+            $useXpath = false;
+            $selector = $this->config()->get('content_element_tag');
         }
 
         // Enable frontend themes in order to correctly render the elements as
@@ -83,21 +93,27 @@ class AlgoliaPageCrawler
         try {
             /** @var DBHTMLText $page */
             $page = $controller->render();
-
             if ($page) {
                 libxml_use_internal_errors(true);
-                $dom = new DOMDocument();
-                $dom->loadHTML($page->forTemplate());
-                $xpath = new DOMXPath($dom);
-                $nodes = $xpath->query($selector);
+                $html5 = new HTML5();
+
+                $dom = $html5->loadHTML($page->forTemplate());
+
+                if ($useXpath) {
+                    $xpath = new DOMXPath($dom);
+                    $nodes = $xpath->query($selector);
+                } else {
+                    $nodes = $dom->getElementsByTagName($selector);
+                }
 
                 if (isset($nodes[0])) {
-                    $output = $nodes[0]->nodeValue;
+                    $output = preg_replace('/\s+/', ' ', $nodes[0]->nodeValue);
                 }
             }
         } catch (Exception $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
+
         Requirements::restore();
         Config::unnest();
 
