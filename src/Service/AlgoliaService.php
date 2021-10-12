@@ -49,15 +49,46 @@ class AlgoliaService
         return $this->client;
     }
 
+
+    public function getIndexes($excludeReplicas = true)
+    {
+        if (!$excludeReplicas) {
+            return $this->indexes;
+        }
+
+        $replicas = [];
+        $output = [];
+
+        foreach ($this->indexes as $indexName => $data) {
+            if (isset($data['indexSettings']) && isset($data['indexSettings']['replicas'])) {
+                foreach ($data['indexSettings']['replicas'] as $replicaName) {
+                    $replicas[$replicaName] = $replicaName;
+                }
+            }
+        }
+
+        foreach ($this->indexes as $indexName => $data) {
+            if (in_array($indexName, $replicas)) {
+                continue;
+            }
+
+            $output[$indexName] = $data;
+        }
+
+        return $output;
+    }
+
+
     /**
      * Returns an array of all the indexes which need the given item or item
      * class. If no item provided, returns a list of all the indexes defined.
      *
      * @param DataObject|string|null $item
+     * @param bool $excludeReplicas
      *
      * @return \Algolia\AlgoliaSearch\SearchIndex[]
      */
-    public function initIndexes($item = null)
+    public function initIndexes($item = null, $excludeReplicas = true)
     {
         if (!Security::database_is_ready()) {
             return [];
@@ -80,11 +111,13 @@ class AlgoliaService
         }
 
         if (!$item) {
+            $indexes = $this->getIndexes($excludeReplicas);
+
             return array_map(
                 function ($indexName) use ($client) {
                     return $client->initIndex($this->environmentizeIndex($indexName));
                 },
-                array_keys($this->indexes)
+                array_keys($indexes)
             );
         }
 
@@ -95,6 +128,8 @@ class AlgoliaService
         }
 
         $matches = [];
+
+        $replicas = [];
 
         foreach ($this->indexes as $indexName => $data) {
             $classes = (isset($data['includeClasses'])) ? $data['includeClasses'] : null;
@@ -108,11 +143,21 @@ class AlgoliaService
                     }
                 }
             }
+
+            if (isset($data['indexSettings']) && isset($data['indexSettings']['replicas'])) {
+                foreach ($data['indexSettings']['replicas'] as $replicaName) {
+                    $replicas[$replicaName] = $replicaName;
+                }
+            }
         }
 
         $output = [];
 
         foreach ($matches as $index) {
+            if (in_array($index, array_keys($replicas)) && $excludeReplicas) {
+                continue;
+            }
+
             $output[$index] = $client->initIndex($this->environmentizeIndex($index));
         }
 
