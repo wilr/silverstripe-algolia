@@ -56,6 +56,19 @@ class AlgoliaObjectExtension extends DataExtension
         return $this->config('enable_indexer') ? true : false;
     }
 
+    
+    
+    /**
+     * @param FieldList
+     */
+    public function updateCMSFields(FieldList $fields)
+    {   
+        $fields->removeByName('AlgoliaIndexed');
+        $fields->removeByName('AlgoliaUUID');
+        $fields->removeByName('AlgoliaError');
+    }
+    
+    
     /**
      * @param FieldList
      */
