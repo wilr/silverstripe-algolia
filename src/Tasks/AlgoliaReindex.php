@@ -137,7 +137,7 @@ class AlgoliaReindex extends BuildTask
     {
         if (!$obj) {
             return false;
-        } elseif (!$obj->canIndexInAlgolia()) {
+        } elseif (min($obj->invokeWithExtensions('canIndexInAlgolia')) === false) {
             return false;
         } else {
             if (!$obj->AlgoliaUUID) {
@@ -208,7 +208,7 @@ class AlgoliaReindex extends BuildTask
                 // fetch the actual instance
                 $instance = DataObject::get_by_id($item->ClassName, $item->ID);
 
-                if (!$instance || !$instance->canIndexInAlgolia()) {
+                if (!$instance || min($instance->invokeWithExtensions('canIndexInAlgolia')) == false) {
                     $skipped++;
 
                     continue;

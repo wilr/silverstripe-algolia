@@ -97,7 +97,7 @@ class AlgoliaIndexItemJob extends AbstractQueuedJob implements QueuedJob
 
         if (!$obj) {
             $this->addMessage('Record #'. $id . ' not found');
-        } elseif (!$obj->canIndexInAlgolia()) {
+        } elseif (min($obj->invokeWithExtensions('canIndexInAlgolia')) === false) {
             $this->addMessage('Record #'. $id .' not indexed, canIndexInAlgolia returned false');
         } else {
             if (!$obj->AlgoliaUUID) {
