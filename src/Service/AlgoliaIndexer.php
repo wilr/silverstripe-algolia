@@ -110,7 +110,29 @@ class AlgoliaIndexer
     }
 
     /**
-     * Generates a map of all the fields and values which will be sent.
+     * Generates a map of all the fields and values which will be sent. Two ways
+     * to modifty the attributes sent to algolia. Either define the properties
+     * via the config API
+     *
+     * ```
+     * private static $algolia_index_fields = [
+     *  'MyCustomField'
+     * ];
+     * ```
+     *
+     * Or, use exportObjectToAlgolia to return an array
+     *
+     * ```
+     * class MyObject extends DataObject
+     * {
+     *  public function exportObjectToAlgolia($data)
+     *  {
+     *      return array_merge($data, [
+     *          'MyCustomField' => $this->MyCustomField()
+     *      ]);
+     *  }
+     * }
+     * ```
      *
      * @param DataObject
      *
@@ -129,6 +151,10 @@ class AlgoliaIndexer
             'objectCreated' => $item->dbObject('Created')->getTimestamp(),
             'objectLink' => str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink())
         ];
+
+        if ($item && $item->hasMethod('exportObjectToAlgolia')) {
+            return $item->exportObjectToAlgolia($toIndex);
+        }
 
         if ($this->config()->get('include_page_content')) {
             $toIndex['objectForTemplate'] =

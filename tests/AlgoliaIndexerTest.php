@@ -18,7 +18,9 @@ class AlgoliaIndexerTest extends SapphireTest
     ];
 
     protected static $required_extensions = [
-        AlgoliaTestObject::class => AlgoliaObjectExtension::class
+        AlgoliaTestObject::class => [
+            AlgoliaObjectExtension::class
+        ]
     ];
 
     public static function setUpBeforeClass()

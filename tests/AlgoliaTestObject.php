@@ -41,10 +41,6 @@ class AlgoliaTestObject extends DataObject implements TestOnly
         return Director::absoluteBaseURL();
     }
 
-    public function getTitle()
-    {
-        return $this->dbObject('Title');
-    }
 
     public function canIndexInAlgolia(): bool
     {

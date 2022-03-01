@@ -18,7 +18,9 @@ class AlgoliaObjectExtensionTest extends SapphireTest
     ];
 
     protected static $required_extensions = [
-        AlgoliaTestObject::class => AlgoliaObjectExtension::class
+        AlgoliaTestObject::class => [
+            AlgoliaObjectExtension::class
+        ]
     ];
 
     public static function setUpBeforeClass()
@@ -43,7 +45,9 @@ class AlgoliaObjectExtensionTest extends SapphireTest
 
         $this->assertTrue($object->canIndexInAlgolia(), 'Objects with canIndexInAlgolia() set to true should index');
 
-        $this->assertTrue($object->indexInAlgolia(), 'Indexed in Algolia');
+        $index = $object->indexInAlgolia();
+
+        $this->assertTrue($index, 'Indexed in Algolia');
     }
 
     public function testTouchAlgoliaIndexedDate()
@@ -59,7 +63,7 @@ class AlgoliaObjectExtensionTest extends SapphireTest
                     'SELECT AlgoliaIndexed FROM AlgoliaTestObject WHERE ID = %s',
                     $object->ID
                 )
-            )
+            )->value()
         );
 
         $object->touchAlgoliaIndexedDate(true);
@@ -70,7 +74,7 @@ class AlgoliaObjectExtensionTest extends SapphireTest
                     'SELECT AlgoliaIndexed FROM AlgoliaTestObject WHERE ID = %s',
                     $object->ID
                 )
-            )
+            )->value()
         );
     }
 }
