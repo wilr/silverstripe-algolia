@@ -14,6 +14,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBBoolean;
 use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBDatetime;
+use SilverStripe\ORM\FieldType\DBForeignKey;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
@@ -193,6 +194,8 @@ class AlgoliaIndexer
 
                 if (is_string($dbField) || is_array($dbField)) {
                     $attributes->push($attributeName, $dbField);
+                } elseif ($dbField instanceof DBForeignKey) {
+                    $attributes->push($attributeName, $dbField->Value);
                 } elseif ($dbField->exists() || $dbField instanceof DBBoolean) {
                     if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
                         // has-many, many-many, has-one
