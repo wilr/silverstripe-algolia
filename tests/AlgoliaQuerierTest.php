@@ -25,7 +25,7 @@ class AlgoliaQuerierTest extends SapphireTest
         ]
     ];
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
 

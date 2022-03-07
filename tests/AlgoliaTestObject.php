@@ -36,6 +36,7 @@ class AlgoliaTestObject extends DataObject implements TestOnly
 
     private static $table_name = 'AlgoliaTestObject';
 
+
     public function AbsoluteLink()
     {
         return Director::absoluteBaseURL();

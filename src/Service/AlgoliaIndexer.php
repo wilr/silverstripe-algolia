@@ -18,7 +18,6 @@ use SilverStripe\ORM\FieldType\DBForeignKey;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
-use stdClass;
 
 /**
  * Handles all the index management and communication with Algolia. Note that
@@ -64,16 +63,21 @@ class AlgoliaIndexer
         $searchIndexes = $this->getService()->initIndexes($item);
         $fields = $this->exportAttributesFromObject($item);
 
+        if (method_exists($fields, 'toArray')) {
+            $fields = $fields->toArray();
+        }
+
         if ($searchIndexes) {
+            $output = true;
             foreach ($searchIndexes as $searchIndex) {
-                $result = $searchIndex->saveObject($fields->toArray());
+                $result = $searchIndex->saveObject($fields);
 
                 if (!$result->valid()) {
-                    return false;
+                    $output = false;
                 }
             }
 
-            return true;
+            return $output;
         }
 
         return false;
@@ -356,6 +360,7 @@ class AlgoliaIndexer
         foreach ($indexes as $index) {
             try {
                 $output = $index->getObject($item);
+
                 if ($output) {
                     return $output;
                 }

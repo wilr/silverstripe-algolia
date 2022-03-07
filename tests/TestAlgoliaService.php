@@ -7,8 +7,16 @@ use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
 class TestAlgoliaService extends AlgoliaService implements TestOnly
 {
+    public $indexes = [
+        'testIndex' => [
+            'includeClasses' => [
+                AlgoliaTestObject::class
+            ]
+        ]
+    ];
+
     public function getClient()
     {
-        return new TestAlgoliaServiceClient();
+        return TestAlgoliaServiceClient::create('ABC', '123');
     }
 }

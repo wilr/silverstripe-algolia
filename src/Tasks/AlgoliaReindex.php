@@ -173,7 +173,7 @@ class AlgoliaReindex extends BuildTask
 
         if ($output) {
             echo sprintf(
-                'Found %s %s remaining to index which match filter (%s), will export in batches of %s, %s batches total %s',
+                'Found %s %s remaining to index which match filter (%s), export in batches of %s, %s batches total %s',
                 $total,
                 $targetClass,
                 $filter,
@@ -285,7 +285,6 @@ class AlgoliaReindex extends BuildTask
         $indexes = Injector::inst()->create(AlgoliaService::class)->initIndexes($items[0]);
 
         try {
-
             foreach ($indexes as $index) {
                 $result = $index->saveObjects($items, [
                     'autoGenerateObjectIDIfNotExist' => true
@@ -327,5 +326,4 @@ class AlgoliaReindex extends BuildTask
 
         return $this;
     }
-
 }

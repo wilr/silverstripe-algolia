@@ -81,7 +81,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
                         $this->totalSteps++;
                     }
 
-                    $this->addMessage('Indexing '. $count . ' '. $candidate . ' instances with filters '. $filter );
+                    $this->addMessage('Indexing '. $count . ' '. $candidate . ' instances with filters '. $filter);
                 }
             }
         }

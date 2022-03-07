@@ -56,6 +56,7 @@ class AlgoliaService
             return $this->indexes;
         }
 
+
         $replicas = [];
         $output = [];
 
@@ -109,7 +110,6 @@ class AlgoliaService
 
             return [];
         }
-
         if (!$item) {
             $indexes = $this->getIndexes($excludeReplicas);
 

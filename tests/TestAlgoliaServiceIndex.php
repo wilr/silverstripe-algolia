@@ -2,11 +2,14 @@
 
 namespace Wilr\SilverStripe\Algolia\Tests;
 
+use Algolia\AlgoliaSearch\SearchIndex;
 use SilverStripe\Dev\TestOnly;
 
-class TestAlgoliaServiceIndex implements TestOnly
+class TestAlgoliaServiceIndex extends SearchIndex implements TestOnly
 {
-    public function setSettings($settings)
+    private $objects = [];
+
+    public function setSettings($settings, $requestOptions = array())
     {
         return $settings;
     }
@@ -19,5 +22,19 @@ class TestAlgoliaServiceIndex implements TestOnly
             'nbHits' => 1,
             'hitsPerPage' => 10
         ];
+    }
+
+    public function deleteObject($objectId, $requestOptions = array())
+    {
+        if (isset($this->objects[$objectId])) {
+            unset($this->objects[$objectId]);
+        }
+    }
+
+    public function saveObject($object, $requestOptions = array())
+    {
+        $this->objects[$object['objectID']] = $object;
+
+        return new TestAlgoliaServiceResponse();
     }
 }

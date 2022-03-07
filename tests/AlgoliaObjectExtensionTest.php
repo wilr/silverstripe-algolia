@@ -23,7 +23,7 @@ class AlgoliaObjectExtensionTest extends SapphireTest
         ]
     ];
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         parent::setUpBeforeClass();
 
@@ -38,15 +38,20 @@ class AlgoliaObjectExtensionTest extends SapphireTest
         $object->Active = false;
         $object->write();
 
-        $this->assertFalse($object->canIndexInAlgolia(), 'Objects with canIndexInAlgolia() set to false should not index');
+        $this->assertFalse(
+            min($object->invokeWithExtensions('canIndexInAlgolia')),
+            'Objects with canIndexInAlgolia() false should not index'
+        );
 
         $object->Active = true;
         $object->write();
 
-        $this->assertTrue($object->canIndexInAlgolia(), 'Objects with canIndexInAlgolia() set to true should index');
+        $this->assertTrue(
+            min($object->invokeWithExtensions('canIndexInAlgolia')),
+            'Objects with canIndexInAlgolia() set to true should index'
+        );
 
         $index = $object->indexInAlgolia();
-
         $this->assertTrue($index, 'Indexed in Algolia');
     }
 
