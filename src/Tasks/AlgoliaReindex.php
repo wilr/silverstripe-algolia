@@ -10,6 +10,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\Dev\Debug;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\Map;
 use SilverStripe\Versioned\Versioned;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
@@ -225,7 +226,13 @@ class AlgoliaReindex extends BuildTask
                     $currentBatches[$batchKey] = [];
                 }
 
-                $currentBatches[$batchKey][] = $indexer->exportAttributesFromObject($item)->toArray();
+                $data = $indexer->exportAttributesFromObject($item);
+
+                if ($data instanceof Map) {
+                    $data = $data->toArray();
+                }
+
+                $currentBatches[$batchKey][] = $data;
                 $item->touchAlgoliaIndexedDate();
                 $count++;
 
