@@ -1,6 +1,7 @@
 # :mag: Silverstripe Algolia Module
 
-[![Build Status](http://img.shields.io/travis/wilr/silverstripe-algolia.svg?style=flat-square)](http://travis-ci.com/wilr/silverstripe-algolia)
+[![Build
+Status](http://img.shields.io/travis/wilr/silverstripe-algolia.svg?style=flat-square)](http://travis-ci.com/wilr/silverstripe-algolia)
 [![codecov](https://codecov.io/gh/wilr/silverstripe-algolia/branch/master/graph/badge.svg)](https://codecov.io/gh/wilr/silverstripe-algolia)
 [![Version](http://img.shields.io/packagist/v/wilr/silverstripe-algolia.svg?style=flat-square)](https://packagist.org/packages/wilr/silverstripe-algolia)
 [![License](http://img.shields.io/packagist/l/wilr/silverstripe-algolia.svg?style=flat-square)](LICENSE)
@@ -17,17 +18,21 @@ composer require "wilr/silverstripe-algolia"
 
 ## Features
 
-:ballot_box_with_check: Supports multiple indexes and saving records into multiple indexes.
+:ballot_box_with_check: Supports multiple indexes and saving records into
+multiple indexes.
 
 :ballot_box_with_check: Integrates into existing versioned workflow.
 
-:ballot_box_with_check: No dependancies on the CMS, supports any DataObject subclass.
+:ballot_box_with_check: No dependancies on the CMS, supports any DataObject
+subclass.
 
 :ballot_box_with_check: Queued job support for offloading operations to Algolia.
 
-:ballot_box_with_check: Easily configure search configuration and indexes via YAML and PHP.
+:ballot_box_with_check: Easily configure search configuration and indexes via
+YAML and PHP.
 
-:ballot_box_with_check: Indexes your webpage template so supports Elemental and custom fields out of the box
+:ballot_box_with_check: Indexes your webpage template so supports Elemental and
+custom fields out of the box
 
 ## Documentation
 
@@ -91,7 +96,8 @@ Or for testing with live data on dev use `ALGOLIA_PREFIX_INDEX_NAME='live'`
 ### Defining Replica Indexes
 
 If your search form provides a sort option (e.g latest or relevance) then you
-will be using replica indexes (https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/how-to/creating-replicas/)
+will be using replica indexes
+(https://www.algolia.com/doc/guides/managing-results/refine-results/sorting/how-to/creating-replicas/)
 
 These can be defined using the same YAML configuration.
 
@@ -130,9 +136,9 @@ SilverStripe\Core\Injector\Injector:
 
 ## Indexing
 
-If installing on a existing website run the `AlgoliaReindex` task (via CLI)
-to import existing data. This will batch import all the records from your
-database into the indexes configured above.
+If installing on a existing website run the `AlgoliaReindex` task (via CLI) to
+import existing data. This will batch import all the records from your database
+into the indexes configured above.
 
 ```
 ./vendor/bin/sake dev/tasks/AlgoliaReindex "flush=1"
@@ -141,8 +147,8 @@ database into the indexes configured above.
 Individually records will be indexed automatically going forward via the
 `onAfterPublish` hook and removed via the `onAfterUnpublish` hook which is
 called when publishing or unpublishing a document. If your DataObject does not
-implement the `Versioned` extension you'll need to manage this state yourself
-by calling `$item->indexInAlgolia()` and `$item->removeFromAlgolia()`.
+implement the `Versioned` extension you'll need to manage this state yourself by
+calling `$item->indexInAlgolia()` and `$item->removeFromAlgolia()`.
 
 `AlgoliaReindex` takes a number of arguments to allow for customisation of bulk
 indexing. For instance, if you have a large amount of JobVacancies to bulk
@@ -158,9 +164,9 @@ bulk reindex via a queued job `AlgoliaReindexAllJob`.
 
 ### Customising the indexed attributes (fields)
 
-By default only `ID`, `Title` and `Link`, `LastEdited` will be indexed from
-each record. To specify additional fields, define a `algolia_index_fields`
-config variable.
+By default only `ID`, `Title` and `Link`, `LastEdited` will be indexed from each
+record. To specify additional fields, define a `algolia_index_fields` config
+variable.
 
 ```php
 class MyPage extends Page {
@@ -174,8 +180,8 @@ class MyPage extends Page {
 ```
 
 Or, you can define a `exportObjectToAlgolia` method on your object. This
-receives the default index fields and then allows you to add or remove fields
-as required
+receives the default index fields and then allows you to add or remove fields as
+required
 
 ```php
 class MyPage extends Page {
@@ -264,7 +270,8 @@ class PageController extends ContentController
 }
 ```
 
-Or alternatively you can make use of JS Search SDK (https://www.algolia.com/doc/api-client/getting-started/install/javascript/)
+Or alternatively you can make use of JS Search SDK
+(https://www.algolia.com/doc/api-client/getting-started/install/javascript/)
 
 ## :mag: Inspect Object Fields
 
@@ -273,14 +280,16 @@ information is already in Algolia use the `AlgoliaInspect` BuildTask. This can
 be run via CLI
 
 ```
-./vendor/bin/sake dev/tasks/AlgoliaInspect "ClassName=Page&ID=1"
+./vendor/bin/sake dev/tasks/AlgoliaInspect "class=Page&id=1"
 ```
 
 Will output the Algolia data structure for the Page with the ID of '1'.
 
 ## Elemental Support
 
-Out of the box this module scrapes the webpage's `main` HTML section and stores it in a `objectForTemplate` field in Algolia. This content is parsed via the `AlgoliaPageCrawler` class.
+Out of the box this module scrapes the webpage's `main` HTML section and stores
+it in a `objectForTemplate` field in Algolia. This content is parsed via the
+`AlgoliaPageCrawler` class.
 
 ```html
 <main>
@@ -296,7 +305,8 @@ Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer:
   include_page_content: false
 ```
 
-Or you can specify the HTML selector you do want to index using YAML. For instance to index any elements with a `data-index` attribute.
+Or you can specify the HTML selector you do want to index using YAML. For
+instance to index any elements with a `data-index` attribute.
 
 ```
 Wilr\SilverStripe\Algolia\Service\AlgoliaPageCrawler:

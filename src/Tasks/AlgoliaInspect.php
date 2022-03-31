@@ -12,11 +12,11 @@ class AlgoliaInspect extends BuildTask
 
     public function run($request)
     {
-        $itemClass = $request->getVar('ClassName');
-        $itemId = $request->getVar('ID');
+        $itemClass = $request->getVar('class');
+        $itemId = $request->getVar('id');
 
         if (!$itemClass || !$itemId) {
-            echo 'Missing ClassName or ID';
+            echo 'Missing class or id parameters';
             exit();
         }
 
@@ -41,6 +41,11 @@ class AlgoliaInspect extends BuildTask
         foreach ($item->getAlgoliaIndexes() as $index) {
             print_r($index->getSettings());
         }
+
+        echo '### ALGOLIA STATUS ### '. PHP_EOL;
+        echo 'Error: '. $item->AlgoliaError . PHP_EOL;
+        echo 'LastIndexed: ' . $item->AlgoliaIndexed . PHP_EOL;
+        echo 'Algolia UUID: '. $item->AlgoliaUUID . PHP_EOL;
 
         echo PHP_EOL . 'Done.' . PHP_EOL;
     }

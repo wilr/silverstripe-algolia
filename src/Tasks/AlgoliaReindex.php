@@ -126,6 +126,8 @@ class AlgoliaReindex extends BuildTask
             }
         }
 
+        $items = $items->setDataQueryParam('Subsite.filter', false);
+
         return $items;
     }
 
