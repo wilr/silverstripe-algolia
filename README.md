@@ -184,14 +184,24 @@ receives the default index fields and then allows you to add or remove fields as
 required
 
 ```php
+use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\Map;
+
 class MyPage extends Page {
 
     public function exportObjectToAlgolia($data)
     {
-        return array_merge($data, [
-            'MyCustomField' => $this->MyCustomField(),
-            'Something' => $this->Object()->Name,
+        $data = array_merge($data, [
+            'MyCustomField' => $this->MyCustomField()
         ]);
+
+        $map = new Map(ArrayList::create());
+
+        foreach ($data as $k => $v) {
+            $map->push($k, $v);
+        }
+
+        return $map;
     }
 }
 ```

@@ -125,16 +125,22 @@ class AlgoliaIndexer
      * ];
      * ```
      *
-     * Or, use exportObjectToAlgolia to return an array
+     * Or, use exportObjectToAlgolia to return an Map. You can chose to include
+     * the default fields or not.
      *
      * ```
      * class MyObject extends DataObject
      * {
      *  public function exportObjectToAlgolia($data)
      *  {
-     *      return array_merge($data, [
+     *      $data = array_merge($data, [
      *          'MyCustomField' => $this->MyCustomField()
      *      ]);
+     *      $map = new Map(ArrayList::create());
+     *      foreach ($data as $k => $v) {
+     *          $map->push($k, $v);
+     *      }
+     *      return $map;
      *  }
      * }
      * ```

@@ -14,7 +14,8 @@ class AlgoliaIndexerTest extends SapphireTest
     protected $usesDatabase = true;
 
     protected static $extra_dataobjects = [
-        AlgoliaTestObject::class
+        AlgoliaTestObject::class,
+        AlgoliaCustomTestObject::class
     ];
 
     protected static $required_extensions = [
@@ -42,7 +43,19 @@ class AlgoliaIndexerTest extends SapphireTest
 
         $this->assertArrayHasKey('objectID', $map);
         $this->assertEquals($map['objectTitle'], 'Foobar');
+
+        $object = AlgoliaCustomTestObject::create();
+        $object->Title = 'Qux';
+        $object->write();
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $map = $indexer->exportAttributesFromObject($object)->toArray();
+
+        $this->assertArrayHasKey('objectID', $map);
+        $this->assertEquals($map['objectTitle'], 'Qux');
+        $this->assertEquals($map['MyCustomField'], 'MyCustomFieldValue');
     }
+
 
     public function testDeleteExistingItem()
     {

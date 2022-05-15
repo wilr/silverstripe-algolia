@@ -20,7 +20,8 @@
   "scripts": {
     "lint": "phpcs --extensions=php src/ tests/",
     "syntax-check": "find src/ tests/ -type f -name '*.php' -exec php -l {} \\;",
-    "lint-clean": "phpcbf src/ tests/"
+    "lint-clean": "phpcbf src/ tests/",
+    "test": "phpunit tests"
   },
   "extra": {
       "branch-alias": {
@@ -34,5 +35,11 @@
       }
   },
   "prefer-stable": true,
-  "minimum-stability": "dev"
+  "minimum-stability": "dev",
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true,
+      "silverstripe/vendor-plugin": true
+    }
+  }
 }
