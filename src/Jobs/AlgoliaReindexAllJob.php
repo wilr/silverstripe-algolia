@@ -2,6 +2,7 @@
 
 namespace Wilr\Silverstripe\Algolia\Jobs;
 
+use Exception;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataObject;
@@ -112,30 +113,34 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
 
             if (!empty($take)) {
                 $this->currentStep += count($take);
+                $errors = [];
 
-                if ($batching) {
-                    if ($task->indexItems($class, '', DataObject::get($class)->filter('ID', $take), false)) {
-                        $this->addMessage('Successfully indexing '. $class . ' ['. implode(', ', $take) . ']');
-                    } else {
-                        $this->addMessage('Error indexing '. $class . ' ['. implode(', ', $take) . ']');
-                    }
-                } else {
-                    $items = DataObject::get($class)->filter('ID', $take);
-
-                    foreach ($items as $item) {
-                        if ($task->indexItem($item)) {
-                            $this->addMessage('Successfully indexed '. $class . ' ['. $item->ID . ']');
+                try {
+                    if ($batching) {
+                        if ($task->indexItems($class, '', DataObject::get($class)->filter('ID', $take), false)) {
+                            $this->addMessage('Successfully indexing '. $class . ' ['. implode(', ', $take) . ']');
                         } else {
-                            $this->addMessage('Error indexing '. $class . ' ['. $item->ID . ']');
+                            $this->addMessage('Error indexing '. $class . ' ['. implode(', ', $take) . ']');
+                        }
+                    } else {
+                        $items = DataObject::get($class)->filter('ID', $take);
+
+                        foreach ($items as $item) {
+                            if ($task->indexItem($item)) {
+                                $this->addMessage('Successfully indexed '. $class . ' ['. $item->ID . ']');
+                            } else {
+                                $this->addMessage('Error indexing '. $class . ' ['. $item->ID . ']');
+                            }
                         }
                     }
-                }
 
-                $errors = $task->getErrors();
+                    $errors = $task->getErrors();
+                } catch (Exception $e) {
+                    $errors[] = $e->getMessage();
+                }
 
                 if (!empty($errors)) {
                     $this->addMessage(implode(', ', $errors));
-
                     $task->clearErrors();
                 }
             } else {
