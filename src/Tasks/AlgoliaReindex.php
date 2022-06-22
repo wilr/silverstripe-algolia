@@ -228,24 +228,28 @@ class AlgoliaReindex extends BuildTask
                     $currentBatches[$batchKey] = [];
                 }
 
-                $data = $indexer->exportAttributesFromObject($item);
+                try {
+                    $data = $indexer->exportAttributesFromObject($item);
 
-                if ($data instanceof Map) {
-                    $data = $data->toArray();
+                    if ($data instanceof Map) {
+                        $data = $data->toArray();
+                    }
+
+                    $currentBatches[$batchKey][] = $data;
+                    $item->touchAlgoliaIndexedDate();
+                    $count++;
+                } catch (Exception $e) {
+                    Injector::inst()->get(LoggerInterface::class)->warning($e->getMessage());
                 }
-
-                $currentBatches[$batchKey][] = $data;
-                $item->touchAlgoliaIndexedDate();
-                $count++;
 
                 if (count($currentBatches[$batchKey]) >= $batchSize) {
                     $this->indexBatch($currentBatches[$batchKey]);
 
                     unset($currentBatches[$batchKey]);
+                }
 
-                    if ($output) {
-                        sleep(1);
-                    }
+                if ($output) {
+                    sleep(1);
                 }
             }
         }
