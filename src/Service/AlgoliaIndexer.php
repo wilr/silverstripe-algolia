@@ -3,7 +3,6 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
-use Exception;
 use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
@@ -18,6 +17,7 @@ use SilverStripe\ORM\FieldType\DBForeignKey;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
+use Throwable;
 
 /**
  * Handles all the index management and communication with Algolia. Note that
@@ -310,7 +310,7 @@ class AlgoliaIndexer
             }
 
             $attributes->push($relationship, $data);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
     }

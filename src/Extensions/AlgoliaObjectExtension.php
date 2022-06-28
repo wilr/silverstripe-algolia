@@ -2,7 +2,6 @@
 
 namespace Wilr\SilverStripe\Algolia\Extensions;
 
-use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
@@ -14,6 +13,7 @@ use SilverStripe\ORM\DB;
 use Ramsey\Uuid\Uuid;
 use SilverStripe\Core\Convert;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
+use Throwable;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
@@ -100,7 +100,7 @@ class AlgoliaObjectExtension extends DataExtension
 
         try {
             $algolia->syncSettings();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             DB::alteration_message($e->getMessage(), 'error');
         }
     }
@@ -225,7 +225,7 @@ class AlgoliaObjectExtension extends DataExtension
 
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
 
             $schema = DataObject::getSchema();
@@ -280,7 +280,7 @@ class AlgoliaObjectExtension extends DataExtension
                 $indexer->deleteItem($this->owner->getClassName(), $this->owner->AlgoliaUUID);
 
                 $this->markAsRemovedFromAlgoliaIndex();
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 Injector::inst()->create(LoggerInterface::class)->error($e);
 
                 return false;

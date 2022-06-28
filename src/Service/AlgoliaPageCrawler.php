@@ -3,7 +3,6 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use DOMXPath;
-use Exception;
 use Masterminds\HTML5;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Controllers\ModelAsController;
@@ -16,14 +15,13 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
+use Throwable;
 
 /**
  * Fetches the main content off the page to index. This handles more complex
  * templates. Main content should be low-weighted as depending on your
  * front-end the <main> element may contain other information which should
  * not be indexed.
- *
- * @todo allow filtering
  */
 class AlgoliaPageCrawler
 {
@@ -36,7 +34,7 @@ class AlgoliaPageCrawler
      * that should be indexed. If blank, defaults to the `main` element
      *
      * @config
-     * @var    string
+     * @var string
      */
     private static $content_xpath_selector = '';
 
@@ -110,7 +108,7 @@ class AlgoliaPageCrawler
                     $output = preg_replace('/\s+/', ' ', $nodes[0]->nodeValue);
                 }
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
 
