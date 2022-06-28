@@ -2,7 +2,6 @@
 
 namespace Wilr\SilverStripe\Algolia\Tasks;
 
-use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
@@ -12,6 +11,7 @@ use SilverStripe\Dev\Debug;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\Map;
 use SilverStripe\Versioned\Versioned;
+use Throwable;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
@@ -238,7 +238,7 @@ class AlgoliaReindex extends BuildTask
                     $currentBatches[$batchKey][] = $data;
                     $item->touchAlgoliaIndexedDate();
                     $count++;
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     Injector::inst()->get(LoggerInterface::class)->warning($e->getMessage());
                 }
 
@@ -309,7 +309,7 @@ class AlgoliaReindex extends BuildTask
             }
 
             return true;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
 
             if (Director::isDev()) {

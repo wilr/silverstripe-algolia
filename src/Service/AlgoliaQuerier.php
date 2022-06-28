@@ -7,6 +7,7 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\PaginatedList;
+use Throwable;
 
 /**
  * Wraps the Algolia SDK to return Silverstripe ORM records
@@ -48,7 +49,7 @@ class AlgoliaQuerier
             $selectedIndex = $service->environmentizeIndex($selectedIndex);
             $index = $service->getClient()->initIndex($selectedIndex);
             $results = $index->search($query, $searchParameters);
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
         }
 
@@ -69,7 +70,7 @@ class AlgoliaQuerier
                     if ($record && $record->canView()) {
                         $records->push($record);
                     }
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     Injector::inst()->get(LoggerInterface::class)->notice($e);
                 }
             }

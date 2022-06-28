@@ -8,6 +8,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataObject;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJob;
+use Throwable;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 use Wilr\SilverStripe\Algolia\Tasks\AlgoliaReindex;
 
@@ -135,7 +136,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
                     }
 
                     $errors = $task->getErrors();
-                } catch (Exception $e) {
+                } catch (Throwable $e) {
                     $errors[] = $e->getMessage();
                 }
 

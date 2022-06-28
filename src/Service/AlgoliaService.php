@@ -3,7 +3,6 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\SearchClient;
-use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
@@ -11,6 +10,7 @@ use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\Debug;
 use SilverStripe\Security\Security;
+use Throwable;
 
 class AlgoliaService
 {
@@ -101,7 +101,7 @@ class AlgoliaService
             if (!$client) {
                 return [];
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             Injector::inst()->create(LoggerInterface::class)->error($e);
 
             if (Director::isDev()) {
@@ -216,7 +216,7 @@ class AlgoliaService
                         }
 
                         $index->setSettings($data['indexSettings']);
-                    } catch (Exception $e) {
+                    } catch (Throwable $e) {
                         Injector::inst()->create(LoggerInterface::class)->error($e);
 
                         if (Director::isDev()) {
