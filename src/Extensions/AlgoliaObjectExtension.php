@@ -53,7 +53,7 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function indexEnabled(): bool
     {
-        return $this->config('enable_indexer') ? true : false;
+        return $this->config()->get('enable_indexer') ? true : false;
     }
 
 
