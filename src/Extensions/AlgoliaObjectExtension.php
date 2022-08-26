@@ -98,6 +98,8 @@ class AlgoliaObjectExtension extends DataExtension
         $this->ranSync = true;
         $algolia = Injector::inst()->create(AlgoliaService::class);
 
+        if(!$this->indexEnabled()) return;
+
         try {
             $algolia->syncSettings();
         } catch (Throwable $e) {
