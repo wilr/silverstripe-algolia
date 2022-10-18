@@ -11,6 +11,7 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\Debug;
 use SilverStripe\Security\Security;
 use Throwable;
+use Exception;
 
 class AlgoliaService
 {
