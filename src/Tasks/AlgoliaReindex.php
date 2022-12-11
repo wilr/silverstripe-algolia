@@ -64,6 +64,17 @@ class AlgoliaReindex extends BuildTask
             $filter = 'AlgoliaIndexed IS NULL';
         }
 
+        /** @var AlgoliaService */
+        $algoliaService = Injector::inst()->create(AlgoliaService::class);
+
+        if ($request->getVar('clearAll')) {
+            $indexes = $algoliaService->initIndexes();
+
+            foreach ($indexes as $indexName => $index) {
+                $index->clearObjects();
+            }
+        }
+
         if ($targetClass) {
             $items = $this->getItems($targetClass, $filter);
 
@@ -78,7 +89,6 @@ class AlgoliaReindex extends BuildTask
                 );
             }
         } else {
-            $algoliaService = Injector::inst()->create(AlgoliaService::class);
 
             // find all classes we have to index and do so
             foreach ($algoliaService->indexes as $index) {

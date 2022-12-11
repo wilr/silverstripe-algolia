@@ -161,6 +161,19 @@ import but only need the active ones you can trigger the task as follows:
 If you do not have access to a CLI (i.e Silverstripe Cloud) then you can also
 bulk reindex via a queued job `AlgoliaReindexAllJob`.
 
+### Optional
+
+`forceAll` forces every Silverstripe record to be re-synced.
+
+```
+./vendor/bin/sake dev/tasks/AlgoliaReindex "flush=1&forceAll=1"
+```
+
+`clearAll` truncates the search index before reindexing.
+
+```
+./vendor/bin/sake dev/tasks/AlgoliaReindex "flush=1&clearAll=1&forceAll=1"
+```
 
 ### Customising the indexed attributes (fields)
 
