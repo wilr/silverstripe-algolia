@@ -68,6 +68,7 @@ class AlgoliaPageCrawler
         // Enable frontend themes in order to correctly render the elements as
         // they would be for the frontend
         Config::nest();
+        $oldThemes = SSViewer::get_themes();
         SSViewer::set_themes(SSViewer::config()->get('themes'));
 
         Requirements::clear();
@@ -112,6 +113,7 @@ class AlgoliaPageCrawler
             Injector::inst()->create(LoggerInterface::class)->error($e);
         }
 
+        SSViewer::set_themes($oldThemes);
         Requirements::restore();
         Config::unnest();
 
