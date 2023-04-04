@@ -159,9 +159,12 @@ class AlgoliaIndexer
             'objectClassName' => get_class($item),
             'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),
             'objectLastEdited' => $item->dbObject('LastEdited')->getTimestamp(),
-            'objectCreated' => $item->dbObject('Created')->getTimestamp(),
-            'objectLink' => str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink())
+            'objectCreated' => $item->dbObject('Created')->getTimestamp()
         ];
+
+        if ($item->hasMethod('AbsoluteLink')) {
+            $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink());
+        }
 
         if ($item && $item->hasMethod('exportObjectToAlgolia')) {
             return $item->exportObjectToAlgolia($toIndex);
