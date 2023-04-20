@@ -12,6 +12,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use Ramsey\Uuid\Uuid;
 use SilverStripe\Core\Convert;
+use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Throwable;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
@@ -78,9 +79,9 @@ class AlgoliaObjectExtension extends DataExtension
             $fields->addFieldsToTab(
                 'Root.Search',
                 [
-                ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__.'.LastIndexed', 'Last indexed in Algolia'))
-                    ->setDescription($this->owner->AlgoliaError),
-                ReadonlyField::create('AlgoliaUUID', _t(__CLASS__.'.UUID', 'Algolia UUID'))
+                    ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__.'.LastIndexed', 'Last indexed in Algolia'))
+                        ->setDescription($this->owner->AlgoliaError),
+                    ReadonlyField::create('AlgoliaUUID', _t(__CLASS__.'.UUID', 'Algolia UUID'))
                 ]
             );
         }
@@ -174,7 +175,7 @@ class AlgoliaObjectExtension extends DataExtension
             $set = implode(', ', $sets);
             DB::query(sprintf('UPDATE %s SET %s WHERE ID = %s', $table, $set, $this->owner->ID));
 
-            if ($this->owner->hasExtension('SilverStripe\Versioned\Versioned')) {
+            if ($this->owner->hasExtension(Versioned::class) && $this->owner->hasStages()) {
                 DB::query(
                     sprintf(
                         'UPDATE %s_Live SET %s WHERE ID = %s',
