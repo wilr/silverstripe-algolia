@@ -327,16 +327,14 @@ class AlgoliaIndexer
      */
     public function deleteItem($itemClass, $itemUUID)
     {
-        $item = DataObject::get($itemClass)->find('AlgoliaUUID', $itemUUID);
-
-        if (!$item || !$item->isInDB()) {
+        if (!$itemUUID) {
             return false;
         }
 
         $searchIndexes = $this->getService()->initIndexes();
 
         foreach ($searchIndexes as $key => $searchIndex) {
-            $searchIndex->deleteObject($item->AlgoliaUUID);
+            $searchIndex->deleteObject($itemUUID);
         }
 
         return true;
