@@ -27,6 +27,8 @@ class AlgoliaService
 
     protected $client;
 
+    protected $preloadedIndexes = [];
+
     /**
      * @return \Algolia\AlgoliaSearch\SearchClient
      */
@@ -34,11 +36,11 @@ class AlgoliaService
     {
         if (!$this->client) {
             if (!$this->adminApiKey) {
-                throw new Exception('No adminApiKey configured for '. self::class);
+                throw new Exception('No adminApiKey configured for ' . self::class);
             }
 
             if (!$this->applicationId) {
-                throw new Exception('No applicationId configured for '. self::class);
+                throw new Exception('No applicationId configured for ' . self::class);
             }
 
             $this->client = SearchClient::create(
@@ -56,7 +58,6 @@ class AlgoliaService
         if (!$excludeReplicas) {
             return $this->indexes;
         }
-
 
         $replicas = [];
         $output = [];
@@ -78,6 +79,21 @@ class AlgoliaService
         }
 
         return $output;
+    }
+
+
+    public function getIndexByName($name)
+    {
+        $indexes = $this->initIndexes();
+
+        if (!isset($indexes[$name])) {
+            throw new Exception(sprintf(
+                'Index ' . $name . ' not found, must be one of [%s]',
+                implode(', ', array_keys($indexes))
+            ));
+        }
+
+        return $indexes[$name];
     }
 
 
@@ -112,14 +128,19 @@ class AlgoliaService
             return [];
         }
         if (!$item) {
+            if ($this->preloadedIndexes) {
+                return $this->preloadedIndexes;
+            }
+
             $indexes = $this->getIndexes($excludeReplicas);
 
-            return array_map(
-                function ($indexName) use ($client) {
-                    return $client->initIndex($this->environmentizeIndex($indexName));
-                },
-                array_keys($indexes)
-            );
+            $this->preloadedIndexes = [];
+
+            foreach ($indexes as $indexName => $data) {
+                $this->preloadedIndexes[$indexName] = $client->initIndex($this->environmentizeIndex($indexName));
+            }
+
+            return $this->preloadedIndexes;
         }
 
         if (is_string($item)) {
@@ -134,10 +155,26 @@ class AlgoliaService
 
         foreach ($this->indexes as $indexName => $data) {
             $classes = (isset($data['includeClasses'])) ? $data['includeClasses'] : null;
+            $filter = (isset($data['includeFilter'])) ? $data['includeFilter'] : null;
 
             if ($classes) {
                 foreach ($classes as $candidate) {
                     if ($item instanceof $candidate) {
+                        if (method_exists($item, 'shouldIncludeInIndex') && !$item->shouldIncludeInIndex($indexName)) {
+                            continue;
+                        }
+
+                        if ($filter && isset($filter[$candidate])) {
+                            // check to see if this item matches the filter.
+                            $check = $candidate::get()->filter([
+                                'ID' => $item->ID,
+                            ])->where($filter[$candidate])->first();
+
+                            if (!$check) {
+                                continue;
+                            }
+                        }
+
                         $matches[] = $indexName;
 
                         break;
@@ -220,9 +257,6 @@ class AlgoliaService
                     } catch (Throwable $e) {
                         Injector::inst()->create(LoggerInterface::class)->error($e);
 
-                        if (Director::isDev()) {
-                            throw $e;
-                        }
 
                         return false;
                     }

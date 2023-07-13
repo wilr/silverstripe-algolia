@@ -75,54 +75,49 @@ class AlgoliaReindex extends BuildTask
             }
         }
 
-        if ($targetClass) {
-            $items = $this->getItems($targetClass, $filter);
+        // find all classes we have to index and do so
+        foreach ($algoliaService->indexes as $indexName => $index) {
+            echo 'Updating index ' . $indexName . PHP_EOL;
 
-            if ($items->exists()) {
-                $this->indexItems($targetClass, $filter, $items);
-            } else {
-                echo sprintf(
-                    'Found 0 %s remaining to index which match filter (%s)%s',
-                    $targetClass,
-                    $filter,
-                    PHP_EOL
-                );
-            }
-        } else {
+            $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
+            $indexFilters = (isset($index['includeFilter'])) ? $index['includeFilter'] : [];
 
-            // find all classes we have to index and do so
-            foreach ($algoliaService->indexes as $index) {
-                $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
+            if ($classes) {
+                foreach ($classes as $candidate) {
+                    if ($targetClass && $targetClass !== $candidate) {
+                        continue;
+                    }
 
-                if ($classes) {
-                    foreach ($classes as $candidate) {
-                        $items = $this->getItems($candidate, $filter);
 
-                        if ($items->exists()) {
-                            $this->indexItems($candidate, $filter, $items);
-                        } else {
-                            echo sprintf(
-                                'Found 0 %s remaining to index which match filter (%s)%s',
-                                $targetClass,
-                                $filter,
-                                PHP_EOL
-                            );
-                        }
+                    $items = $this->getItems($candidate, $filter, $indexFilters);
+                    echo sprintf(
+                        '| Found %s %s remaining to index which match filter (%s)%s',
+                        $items->count(),
+                        $targetClass,
+                        implode(',', array_merge([$filter], [$indexFilters[$candidate]] ?? [])),
+                        PHP_EOL
+                    );
+
+                    if ($items->exists()) {
+                        $this->indexItems($indexName, $items);
                     }
                 }
             }
         }
 
+
         echo 'Done';
     }
+
 
     /**
      * @param string $targetClass
      * @param string $filter
+     * @param string[] $indexFilters
      *
      * @return \SilverStripe\ORM\DataList
      */
-    public function getItems($targetClass, $filter = '')
+    public function getItems($targetClass, $filter = '', $indexFilters = [])
     {
         $inst = $targetClass::create();
 
@@ -136,10 +131,15 @@ class AlgoliaReindex extends BuildTask
             }
         }
 
+        if (isset($indexFilters[$targetClass])) {
+            $items = $items->where($indexFilters[$targetClass]);
+        }
+
         $items = $items->setDataQueryParam('Subsite.filter', false);
 
         return $items;
     }
+
 
     /**
      * @param DataObject $obj
@@ -167,14 +167,13 @@ class AlgoliaReindex extends BuildTask
 
 
     /**
-     * @param string $targetClass
-     * @param string $filter
+     * @param string $indexName
      * @param DataList? $items
      * @param bool $output;
      *
      * @return bool|string
      */
-    public function indexItems($targetClass, $filter = '', $items = null, $output = true)
+    public function indexItems($indexName, $items = null, $output = true)
     {
         $algoliaService = Injector::inst()->get(AlgoliaService::class);
         $count = 0;
@@ -183,19 +182,6 @@ class AlgoliaReindex extends BuildTask
         $batchSize = $this->config()->get('batch_size') ?? 25;
         $batchesTotal = ($total > 0) ? (ceil($total / $batchSize)) : 0;
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
-
-        if ($output) {
-            echo sprintf(
-                'Found %s %s remaining to index which match filter (%s), export in batches of %s, %s batches total %s',
-                $total,
-                $targetClass,
-                $filter,
-                $batchSize,
-                $batchesTotal,
-                PHP_EOL
-            );
-        }
-
         $pos = 0;
 
         if ($total < 1) {
@@ -253,7 +239,7 @@ class AlgoliaReindex extends BuildTask
                 }
 
                 if (count($currentBatches[$batchKey]) >= $batchSize) {
-                    $this->indexBatch($currentBatches[$batchKey]);
+                    $this->indexBatch($indexName, $currentBatches[$batchKey]);
 
                     unset($currentBatches[$batchKey]);
                 }
@@ -266,7 +252,7 @@ class AlgoliaReindex extends BuildTask
 
         foreach ($currentBatches as $class => $records) {
             if (count($currentBatches[$class]) > 0) {
-                $this->indexbatch($currentBatches[$class]);
+                $this->indexBatch($indexName, $currentBatches[$class]);
 
                 if ($output) {
                     sleep(1);
@@ -275,21 +261,24 @@ class AlgoliaReindex extends BuildTask
         }
 
         $summary = sprintf(
-            "Number of objects indexed: %s, Skipped %s",
+            "%s| Number of objects indexed in %s: %s, Skipped %s",
+            PHP_EOL,
+            $indexName,
             $count,
             $skipped
         );
 
         if ($output) {
-            Debug::message($summary);
+            echo $summary;
 
-            Debug::message(
-                sprintf(
-                    "See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>".
-                    "algolia.com/apps/%s/explorer/indices</a>",
-                    $algoliaService->applicationId,
-                    $algoliaService->applicationId
-                )
+            echo sprintf(
+                "%s| See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>" .
+                    "algolia.com/apps/%s/explorer/indices</a>%s---%s",
+                PHP_EOL,
+                $algoliaService->applicationId,
+                $algoliaService->applicationId,
+                PHP_EOL,
+                PHP_EOL
             );
         }
 
@@ -303,9 +292,10 @@ class AlgoliaReindex extends BuildTask
      *
      * @return bool
      */
-    public function indexBatch($items): bool
+    public function indexBatch($indexName, $items): bool
     {
-        $indexes = Injector::inst()->create(AlgoliaService::class)->initIndexes($items[0]);
+        $service = Injector::inst()->create(AlgoliaService::class);
+        $indexes = $service->getIndexByName($indexName);
 
         try {
             foreach ($indexes as $index) {

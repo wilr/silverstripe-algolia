@@ -74,6 +74,7 @@ class AlgoliaIndexerTest extends SapphireTest
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
         $deleted = $indexer->deleteItem(AlgoliaTestObject::class, 9999999);
 
-        return $this->assertFalse($deleted);
+        return $this->assertTrue($deleted);
     }
+
 }

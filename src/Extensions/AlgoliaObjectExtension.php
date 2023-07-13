@@ -79,9 +79,9 @@ class AlgoliaObjectExtension extends DataExtension
             $fields->addFieldsToTab(
                 'Root.Search',
                 [
-                    ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__.'.LastIndexed', 'Last indexed in Algolia'))
+                    ReadonlyField::create('AlgoliaIndexed', _t(__CLASS__ . '.LastIndexed', 'Last indexed in Algolia'))
                         ->setDescription($this->owner->AlgoliaError),
-                    ReadonlyField::create('AlgoliaUUID', _t(__CLASS__.'.UUID', 'Algolia UUID'))
+                    ReadonlyField::create('AlgoliaUUID', _t(__CLASS__ . '.UUID', 'Algolia UUID'))
                 ]
             );
         }
@@ -99,7 +99,9 @@ class AlgoliaObjectExtension extends DataExtension
         $this->ranSync = true;
         $algolia = Injector::inst()->create(AlgoliaService::class);
 
-        if(!$this->indexEnabled()) return;
+        if (!$this->indexEnabled()) {
+            return;
+        }
 
         try {
             $algolia->syncSettings();
@@ -145,6 +147,8 @@ class AlgoliaObjectExtension extends DataExtension
     public function markAsRemovedFromAlgoliaIndex()
     {
         $this->touchAlgoliaIndexedDate(true);
+
+        return $this->owner;
     }
 
     /**
@@ -152,11 +156,14 @@ class AlgoliaObjectExtension extends DataExtension
      */
     public function touchAlgoliaIndexedDate($isDeleted = false)
     {
-        $newValue = $isDeleted ? 'null' : 'NOW()';
+        $newValue = $isDeleted ? 'null' : DB::get_conn()->now();
+
         $this->updateAlgoliaFields([
             'AlgoliaIndexed' => $newValue,
             'AlgoliaUUID' => "'" . $this->owner->AlgoliaUUID . "'",
         ]);
+
+        return $this->owner;
     }
 
     /**

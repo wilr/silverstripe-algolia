@@ -241,7 +241,7 @@ class AlgoliaIndexer
                                         );
 
                                         if ($block) {
-                                            $attributes->push($attributeName .'_Block'. $i, $block);
+                                            $attributes->push($attributeName . '_Block' . $i, $block);
                                         } else {
                                             $hasContent = false;
                                         }
@@ -331,10 +331,14 @@ class AlgoliaIndexer
             return false;
         }
 
-        $searchIndexes = $this->getService()->initIndexes();
+        $searchIndexes = $this->getService()->initIndexes($itemClass);
 
         foreach ($searchIndexes as $key => $searchIndex) {
-            $searchIndex->deleteObject($itemUUID);
+            try {
+                $searchIndex->deleteObject($itemUUID);
+            } catch (Throwable $e) {
+                // do nothing
+            }
         }
 
         return true;
@@ -352,7 +356,7 @@ class AlgoliaIndexer
      */
     public function generateUniqueID($item)
     {
-        return strtolower(str_replace('\\', '_', get_class($item)) . '_'. $item->ID);
+        return strtolower(str_replace('\\', '_', get_class($item)) . '_' . $item->ID);
     }
 
     /**

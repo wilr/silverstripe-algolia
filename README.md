@@ -8,7 +8,7 @@ Status](http://img.shields.io/travis/wilr/silverstripe-algolia.svg?style=flat-sq
 
 ## Maintainer Contact
 
-* Will Rossiter (@wilr) <will@fullscreen.io>
+-   Will Rossiter (@wilr) <will@fullscreen.io>
 
 ## Installation
 
@@ -23,7 +23,7 @@ multiple indexes.
 
 :ballot_box_with_check: Integrates into existing versioned workflow.
 
-:ballot_box_with_check: No dependancies on the CMS, supports any DataObject
+:ballot_box_with_check: No dependencies on the CMS, supports any DataObject
 subclass.
 
 :ballot_box_with_check: Queued job support for offloading operations to Algolia.
@@ -52,25 +52,26 @@ DataObjects.
 First, sign up for Algolia.com account and install this module. Once installed,
 Configure the API keys via YAML (environment variables recommended).
 
-*app/_config/algolia.yml*
+_app/\_config/algolia.yml_
+
 ```yml
 ---
 Name: algolia
 After: silverstripe-algolia
 ---
 SilverStripe\Core\Injector\Injector:
-  Wilr\SilverStripe\Algolia\Service\AlgoliaService:
-    properties:
-      adminApiKey: '`ALGOLIA_ADMIN_API_KEY`'
-      searchApiKey: '`ALGOLIA_SEARCH_API_KEY`'
-      applicationId: '`ALGOLIA_SEARCH_APP_ID`'
-      indexes:
-        IndexName:
-          includeClasses:
-            - SilverStripe\CMS\Model\SiteTree
-          indexSettings:
-            attributesForFaceting:
-              - 'filterOnly(objectClassName)'
+    Wilr\SilverStripe\Algolia\Service\AlgoliaService:
+        properties:
+            adminApiKey: "`ALGOLIA_ADMIN_API_KEY`"
+            searchApiKey: "`ALGOLIA_SEARCH_API_KEY`"
+            applicationId: "`ALGOLIA_SEARCH_APP_ID`"
+            indexes:
+                IndexName:
+                    includeClasses:
+                        - SilverStripe\CMS\Model\SiteTree
+                    indexSettings:
+                        attributesForFaceting:
+                            - "filterOnly(objectClassName)"
 ```
 
 Once the indexes and API keys are configured, run a `dev/build` to update the
@@ -92,7 +93,6 @@ ALGOLIA_PREFIX_INDEX_NAME='dev_will'
 
 Or for testing with live data on dev use `ALGOLIA_PREFIX_INDEX_NAME='live'`
 
-
 ### Defining Replica Indexes
 
 If your search form provides a sort option (e.g latest or relevance) then you
@@ -107,31 +107,31 @@ Name: algolia
 After: silverstripe-algolia
 ---
 SilverStripe\Core\Injector\Injector:
-  Wilr\SilverStripe\Algolia\Service\AlgoliaService:
-    properties:
-      adminApiKey: '`ALGOLIA_ADMIN_API_KEY`'
-      searchApiKey: '`ALGOLIA_SEARCH_API_KEY`'
-      applicationId: '`ALGOLIA_SEARCH_APP_ID`'
-      indexes:
-        IndexName:
-          includeClasses:
-            - SilverStripe\CMS\Model\SiteTree
-          indexSettings:
-            attributesForFaceting:
-              - 'filterOnly(ObjectClassName)'
-            replicas:
-              - IndexName_Latest
-        IndexName_Latest:
-          indexSettings:
-            ranking:
-              - 'desc(objectCreated)'
-              - 'typo'
-              - 'words'
-              - 'filters'
-              - 'proximity'
-              - 'attribute'
-              - 'exact'
-              - 'custom'
+    Wilr\SilverStripe\Algolia\Service\AlgoliaService:
+        properties:
+            adminApiKey: "`ALGOLIA_ADMIN_API_KEY`"
+            searchApiKey: "`ALGOLIA_SEARCH_API_KEY`"
+            applicationId: "`ALGOLIA_SEARCH_APP_ID`"
+            indexes:
+                IndexName:
+                    includeClasses:
+                        - SilverStripe\CMS\Model\SiteTree
+                    indexSettings:
+                        attributesForFaceting:
+                            - "filterOnly(ObjectClassName)"
+                        replicas:
+                            - IndexName_Latest
+                IndexName_Latest:
+                    indexSettings:
+                        ranking:
+                            - "desc(objectCreated)"
+                            - "typo"
+                            - "words"
+                            - "filters"
+                            - "proximity"
+                            - "attribute"
+                            - "exact"
+                            - "custom"
 ```
 
 ## Indexing
@@ -219,7 +219,7 @@ class MyPage extends Page {
 }
 ```
 
-### Customising the indexed relationships
+### Customizing the indexed relationships
 
 Out of the box, the default is to push the ID and Title fields of any
 relationships (`$has_one`, `$has_many`, `$many_many`) into a field
@@ -255,7 +255,7 @@ operations. The queuing feature can be disabled via the Config YAML.
 
 ```yaml
 Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension:
-  use_queued_indexing: false
+    use_queued_indexing: false
 ```
 
 ## Displaying and fetching results
@@ -316,7 +316,7 @@ it in a `objectForTemplate` field in Algolia. This content is parsed via the
 
 ```html
 <main>
-     $ElementalArea
+    $ElementalArea
     <!-- will be indexed via Algolia -->
 </main>
 ```
@@ -336,3 +336,148 @@ Wilr\SilverStripe\Algolia\Service\AlgoliaPageCrawler:
   content_xpath_selector: '//[data-index]'
 ```
 
+## Subsite support
+
+If you use the Silverstripe Subsite module to run multiple websites you can
+handle indexing in a couple ways:
+
+-   Use separate indexes per site.
+-   Use a single index, but add a `SubsiteID` field in Algolia.
+
+The decision to go either way depends on the nature of the websites and how
+related they are but separate indexes are highly recommended to prevent leaking
+information between websites and mucking up analytics and query suggestions.
+
+### Subsite support with a single index
+
+If subsites are frequently being created then you may choose to prefer a single
+index since index names need to be controlled via YAML so any new subsite would
+require a code change.
+
+The key to this approach is added `SubsiteID` to the attributes for faceting
+and at the query time.
+
+Step 1. Add the field to Algolia
+
+```
+SilverStripe\Core\Injector\Injector:
+  Wilr\SilverStripe\Algolia\Service\AlgoliaService:
+    properties:
+      adminApiKey: "`ALGOLIA_ADMIN_API_KEY`"
+      searchApiKey: "`ALGOLIA_SEARCH_API_KEY`"
+      applicationId: "`ALGOLIA_SEARCH_APP_ID`"
+      indexes:
+        index_main_site:
+          includeClasses:
+            - SilverStripe\CMS\Model\SiteTree
+          indexSettings:
+            distinct: true
+            attributeForDistinct: "objectLink"
+            searchableAttributes:
+              - objectTitle
+              - objectContent
+              - objectLink
+              - Summary
+              - objectForTemplate
+            attributesForFaceting:
+              - "filterOnly(objectClassName)"
+              ***- "filterOnly(SubsiteID)"***
+```
+
+Step 2. Expose the field on `SiteTree` via a DataExtension (make sure to apply the extension)
+
+```
+<?php
+
+class SiteTreeExtension extends DataExtension
+{
+    private static $algolia_index_fields = [
+        'SubsiteID'
+    ];
+}
+```
+
+Step 3. Filter by the Subsite ID in your results
+
+```php
+<?php
+
+use SilverStripe\Core\Injector\Injector;
+use Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier;
+
+class PageController extends ContentController
+{
+    public function results()
+    {
+        $hitsPerPage = 25;
+        $paginatedPageNum = floor($this->request->getVar('start') / $hitsPerPage);
+
+        $results = Injector::inst()->get(AlgoliaQuerier::class)->fetchResults(
+            'indexName',
+            $this->request->getVar('search'), [
+                'page' => $this->request->getVar('start') ? $paginatedPageNum : 0,
+                'hitsPerPage' => $hitsPerPage,
+                'facetFilters' => [
+                    'SubsiteID' => SubsiteState::singleton()->getSubsiteId()
+                ]
+            ]
+        );
+
+        return [
+            'Title' => 'Search Results',
+            'Results' => $results
+        ];
+    }
+}
+```
+
+### Subsite support with separate indexes
+
+Create multiple indexes in your config and use the `includeFilter` parameter to
+filter the records per index.
+
+The `includeFilter` should be in the format `{$Class}`: `{$WhereQuery}` where
+the `$WhereQuery` is a basic SQL statement performed by the ORM on the given
+class.
+
+```
+SilverStripe\Core\Injector\Injector:
+  Wilr\SilverStripe\Algolia\Service\AlgoliaService:
+    properties:
+      adminApiKey: "`ALGOLIA_ADMIN_API_KEY`"
+      searchApiKey: "`ALGOLIA_SEARCH_API_KEY`"
+      applicationId: "`ALGOLIA_SEARCH_APP_ID`"
+      indexes:
+        index_main_site:
+          includeClasses:
+            - SilverStripe\CMS\Model\SiteTree
+          includeFilter:
+            "SilverStripe\\CMS\\Model\\SiteTree": "SubsiteID = 0"
+          indexSettings:
+            distinct: true
+            attributeForDistinct: "objectLink"
+            searchableAttributes:
+              - objectTitle
+              - objectContent
+              - objectLink
+              - Summary
+              - objectForTemplate
+            attributesForFaceting:
+              - "filterOnly(objectClassName)"
+        index_subsite_pages:
+          includeClasses:
+            - SilverStripe\CMS\Model\SiteTree
+          includeFilter:
+            "SilverStripe\\CMS\\Model\\SiteTree": "SubsiteID > 0"
+          indexSettings:
+            distinct: true
+            attributeForDistinct: "objectLink"
+            searchableAttributes:
+              - objectTitle
+              - objectContent
+              - objectLink
+              - Summary
+              - objectForTemplate
+            attributesForFaceting:
+              - "filterOnly(objectClassName)"
+```
