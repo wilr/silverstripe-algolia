@@ -3,3 +3,6 @@
 /resources
 composer.lock
 .DS_Store
+/public
+/.env
+/.phpunit.result.cache
