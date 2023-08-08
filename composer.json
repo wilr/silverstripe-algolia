@@ -10,6 +10,7 @@
         }
     ],
     "require": {
+        "php": "^8",
         "symbiote/silverstripe-queuedjobs": "^5",
         "algolia/algoliasearch-client-php": "^3",
         "ramsey/uuid": "^4",
