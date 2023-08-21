@@ -94,7 +94,7 @@ class AlgoliaReindex extends BuildTask
                         '| Found %s %s remaining to index which match filter (%s)%s',
                         $items->count(),
                         $targetClass,
-                        implode(',', array_merge([$filter], [$indexFilters[$candidate]] ?? [])),
+                        implode(',', array_merge([$filter], [$indexFilters[$candidate] ?? ''])),
                         PHP_EOL
                     );
 
