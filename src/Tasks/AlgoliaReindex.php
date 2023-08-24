@@ -295,17 +295,15 @@ class AlgoliaReindex extends BuildTask
     public function indexBatch($indexName, $items): bool
     {
         $service = Injector::inst()->create(AlgoliaService::class);
-        $indexes = $service->getIndexByName($indexName);
+        $index = $service->getIndexByName($indexName);
 
         try {
-            foreach ($indexes as $index) {
-                $result = $index->saveObjects($items, [
-                    'autoGenerateObjectIDIfNotExist' => true
-                ]);
+            $result = $index->saveObjects($items, [
+                'autoGenerateObjectIDIfNotExist' => true
+            ]);
 
-                if (!$result->valid()) {
-                    return false;
-                }
+            if (!$result->valid()) {
+                return false;
             }
 
             return true;
