@@ -88,6 +88,9 @@ class AlgoliaQuerier
                 ->setPageLength($results['hitsPerPage']);
         }
 
+        // add raw output from algoia for manipulation
+        $output->raw = $results;
+
         return $output;
     }
 
