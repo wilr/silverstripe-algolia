@@ -68,7 +68,7 @@ class AlgoliaPageCrawler
         
         $originalStage = Versioned::get_stage();
         //Always set to live to ensure we don't pick up draft content in our render eg. draft elemental blocks
-        Versioned::set_stage('Live');
+        Versioned::set_stage(Versioned::LIVE);
 
         // Enable frontend themes in order to correctly render the elements as
         // they would be for the frontend
