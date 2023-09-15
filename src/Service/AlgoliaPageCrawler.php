@@ -13,6 +13,7 @@ use SilverStripe\Control\Session;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\Requirements;
 use SilverStripe\View\SSViewer;
 use Throwable;
@@ -64,6 +65,10 @@ class AlgoliaPageCrawler
             $useXpath = false;
             $selector = $this->config()->get('content_element_tag');
         }
+        
+        $originalStage = Versioned::get_stage();
+        //Always set to live to ensure we don't pick up draft content in our render eg. draft elemental blocks
+        Versioned::set_stage(Versioned::LIVE);
 
         // Enable frontend themes in order to correctly render the elements as
         // they would be for the frontend
@@ -116,6 +121,8 @@ class AlgoliaPageCrawler
         SSViewer::set_themes($oldThemes);
         Requirements::restore();
         Config::unnest();
+
+        Versioned::set_stage($originalStage);
 
         return $output;
     }

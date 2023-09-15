@@ -11,7 +11,7 @@
     ],
     "require": {
         "php": "^8",
-        "symbiote/silverstripe-queuedjobs": "^5",
+        "symbiote/silverstripe-queuedjobs": "^4 || ^5",
         "algolia/algoliasearch-client-php": "^3",
         "ramsey/uuid": "^4",
         "masterminds/html5": "^2.7"
