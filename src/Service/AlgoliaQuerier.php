@@ -68,6 +68,20 @@ class AlgoliaQuerier
                     $record = $className::get()->byId($id);
 
                     if ($record && $record->canView()) {
+                        // Snippet results are cofigured in Algolia to be returned.
+                        // Since the following result is actually fetched from the DB
+                        // I need to concatenate the aogolias snippeted result to the $hit to be returned
+                        if(isset($hit["_snippetResult"]) && isset($hit["_snippetResult"]['Content'])) {
+                            $record->snippetResult = $hit["_snippetResult"]['Content']["value"];
+                        }
+                        if(isset($hit["_snippetResult"]) && isset($hit["_snippetResult"]['objectContent'])) {
+                            $record->snippetResult = $hit["_snippetResult"]['objectContent']["value"];
+                        }
+
+                        if(isset($hit["objectLink"])) {
+                            $record->AlgoliaLink = $hit["objectLink"];
+                        }
+
                         $records->push($record);
                     }
                 } catch (Throwable $e) {
