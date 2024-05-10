@@ -153,6 +153,7 @@ class AlgoliaIndexer
     {
         $toIndex = [
             'objectID' => $item->AlgoliaUUID,
+            'objectContent' => $item->Content,
             'objectSilverstripeID' => $item->ID,
             'objectIndexedTimestamp' => date('c'),
             'objectTitle' => (string) $item->Title,
