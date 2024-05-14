@@ -90,16 +90,6 @@ class AlgoliaQuerier
             }
         }
 
-        //Custom sorting results so Guide pages are always first.
-        //This will unset all results that aren't guide pages
-        //Then instantly re add to array which places them at the bottom.
-        foreach($records as $key => $wanted) {
-            if($wanted->ClassName != 'IntranetGuidePage') {
-                unset($records[$key]);
-            }
-            $records[$key] = $wanted;
-        }
-
         $this->lastResult = $results;
 
         $output = PaginatedList::create($records);
