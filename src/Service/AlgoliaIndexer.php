@@ -282,7 +282,7 @@ class AlgoliaIndexer
         try {
             $data = [];
 
-            $related = $item->{$relationship}();
+            $related = $item->relObject($relationship);
 
             if (!$related || !$related->exists()) {
                 return;
