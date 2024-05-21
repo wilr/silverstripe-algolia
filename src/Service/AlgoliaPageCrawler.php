@@ -30,6 +30,8 @@ class AlgoliaPageCrawler
 
     private $item;
 
+    private static $content_cutoff_bytes = 100000;
+
     /**
      * Defines the xpath selector for the first element of content
      * that should be indexed. If blank, defaults to the `main` element
@@ -65,7 +67,7 @@ class AlgoliaPageCrawler
             $useXpath = false;
             $selector = $this->config()->get('content_element_tag');
         }
-        
+
         $originalStage = Versioned::get_stage();
         //Always set to live to ensure we don't pick up draft content in our render eg. draft elemental blocks
         Versioned::set_stage(Versioned::LIVE);
@@ -123,6 +125,10 @@ class AlgoliaPageCrawler
         Config::unnest();
 
         Versioned::set_stage($originalStage);
+
+        if ($this->config()->get('content_cutoff_bytes')) {
+            $output = mb_strcut($output, 0, $this->config()->get('content_cutoff_bytes') - 1);
+        }
 
         return $output;
     }
