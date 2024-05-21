@@ -162,7 +162,7 @@ class AlgoliaIndexer
             'objectCreated' => $item->dbObject('Created')->getTimestamp()
         ];
 
-        if ($item->hasMethod('AbsoluteLink')) {
+        if ($item->hasMethod('AbsoluteLink') && !empty($item->AbsoluteLink())) {
             $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink());
         }
 
