@@ -163,7 +163,17 @@ class AlgoliaIndexer
         ];
 
         if ($item->hasMethod('AbsoluteLink')) {
-            $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink());
+            $link = $item->AbsoluteLink();
+
+            if (!empty($link)) {
+                $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $link);
+            }
+        } elseif ($item->hasMethod('Link')) {
+            $link = $item->Link();
+
+            if (!empty($link)) {
+                $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $link);
+            }
         }
 
         if ($item && $item->hasMethod('exportObjectToAlgolia')) {
@@ -282,7 +292,7 @@ class AlgoliaIndexer
         try {
             $data = [];
 
-            $related = $item->{$relationship}();
+            $related = $item->relObject($relationship);
 
             if (!$related || !$related->exists()) {
                 return;

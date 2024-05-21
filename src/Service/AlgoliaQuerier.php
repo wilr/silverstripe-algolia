@@ -23,10 +23,11 @@ class AlgoliaQuerier
      * @param string $selectedIndex
      * @param string $query
      * @param array  $searchParameters
+     * @param array  $ORMFilters filter ORM objects prior to returning the results as a PaginatedList
      *
      * @return PaginatedList
      */
-    public function fetchResults($selectedIndex = null, $query = '', $searchParameters = [])
+    public function fetchResults($selectedIndex = null, $query = '', $searchParameters = [], $ORMFilters = [])
     {
         $service = Injector::inst()->get(AlgoliaService::class);
         $results = false;
@@ -77,6 +78,10 @@ class AlgoliaQuerier
         }
 
         $this->lastResult = $results;
+
+        if (!empty($ORMFilters)) {
+            $records = $records->filter($ORMFilters);
+        }
 
         $output = PaginatedList::create($records);
 
