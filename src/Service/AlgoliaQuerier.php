@@ -23,7 +23,7 @@ class AlgoliaQuerier
      * @param string $selectedIndex
      * @param string $query
      * @param array  $searchParameters
-     * @param array  $ORMFilters This argument is used to filter ORM objects prior to returning the results as a PaginatedList
+     * @param array  $ORMFilters filter ORM objects prior to returning the results as a PaginatedList
      *
      * @return PaginatedList
      */

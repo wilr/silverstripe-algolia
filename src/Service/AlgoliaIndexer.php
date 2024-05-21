@@ -164,6 +164,8 @@ class AlgoliaIndexer
 
         if ($item->hasMethod('AbsoluteLink') && !empty($item->AbsoluteLink())) {
             $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $item->AbsoluteLink());
+        } elseif (method_exists($item, 'Link') && !empty($item->Link())) {
+            $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $item->Link());
         }
 
         if ($item && $item->hasMethod('exportObjectToAlgolia')) {
