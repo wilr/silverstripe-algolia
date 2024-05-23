@@ -48,7 +48,7 @@ class AlgoliaQuerier
 
         try {
             $selectedIndex = $service->environmentizeIndex($selectedIndex);
-            $index = $service->getClient()->initIndex($selectedIndex);
+            $index = $service->getSearchClient()->initIndex($selectedIndex);
             $results = $index->search($query, $searchParameters);
         } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
