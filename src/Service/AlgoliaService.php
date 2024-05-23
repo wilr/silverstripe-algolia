@@ -52,6 +52,28 @@ class AlgoliaService
         return $this->client;
     }
 
+    /**
+     * @return \Algolia\AlgoliaSearch\SearchClient
+     */
+    public function getSearchClient()
+    {
+        if (!$this->client) {
+            if (!$this->searchApiKey) {
+                throw new Exception('No searchApiKey configured for ' . self::class);
+            }
+
+            if (!$this->applicationId) {
+                throw new Exception('No applicationId configured for ' . self::class);
+            }
+
+            $this->client = SearchClient::create(
+                $this->applicationId,
+                $this->searchApiKey
+            );
+        }
+
+        return $this->client;
+    }
 
     public function getIndexes($excludeReplicas = true)
     {
