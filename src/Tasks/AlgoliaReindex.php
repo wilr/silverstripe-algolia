@@ -93,7 +93,7 @@ class AlgoliaReindex extends BuildTask
                     echo sprintf(
                         '| Found %s %s remaining to index which match filter (%s)%s',
                         $items->count(),
-                        $targetClass,
+                        $candidate,
                         implode(',', array_merge([$filter], [$indexFilters[$candidate] ?? ''])),
                         PHP_EOL
                     );
