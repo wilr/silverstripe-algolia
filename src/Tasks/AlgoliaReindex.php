@@ -308,7 +308,7 @@ class AlgoliaReindex extends BuildTask
 
             return true;
         } catch (Throwable $e) {
-            Injector::inst()->create(LoggerInterface::class)->error($e);
+            Injector::inst()->get(LoggerInterface::class)->error($e);
 
             if (Director::isDev()) {
                 Debug::message($e->getMessage());

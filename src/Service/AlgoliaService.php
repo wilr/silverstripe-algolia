@@ -141,7 +141,7 @@ class AlgoliaService
                 return [];
             }
         } catch (Throwable $e) {
-            Injector::inst()->create(LoggerInterface::class)->error($e);
+            Injector::inst()->get(LoggerInterface::class)->error($e);
 
             if (Director::isDev()) {
                 Debug::message($e->getMessage());
@@ -277,7 +277,7 @@ class AlgoliaService
 
                         $index->setSettings($data['indexSettings']);
                     } catch (Throwable $e) {
-                        Injector::inst()->create(LoggerInterface::class)->error($e);
+                        Injector::inst()->get(LoggerInterface::class)->error($e);
 
 
                         return false;

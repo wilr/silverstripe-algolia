@@ -324,7 +324,7 @@ class AlgoliaIndexer
 
             $attributes->push($relationship, $data);
         } catch (Throwable $e) {
-            Injector::inst()->create(LoggerInterface::class)->error($e);
+            Injector::inst()->get(LoggerInterface::class)->error($e);
         }
     }
 
