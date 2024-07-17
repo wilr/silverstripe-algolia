@@ -104,49 +104,58 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
             return;
         }
 
+        $algoliaService = Injector::inst()->create(AlgoliaService::class);
         $task = new AlgoliaReindex();
 
         $batchSize = $task->config()->get('batch_size');
         $batching = $this->config()->get('use_batching');
 
         foreach ($remainingChildren as $class => $ids) {
-            $take = array_slice($ids, 0, $batchSize);
-            $this->indexData[$class] = array_slice($ids, $batchSize);
+            foreach ($algoliaService->indexes as $indexName => $index) {
+                $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : [];
 
-            if (!empty($take)) {
-                $this->currentStep += count($take);
-                $errors = [];
+                if (!in_array($class, $classes)) {
+                    continue;
+                }
 
-                try {
-                    if ($batching) {
-                        if ($task->indexItems($class, DataObject::get($class)->filter('ID', $take), false)) {
-                            $this->addMessage('Successfully indexing ' . $class . ' [' . implode(', ', $take) . ']');
-                        } else {
-                            $this->addMessage('Error indexing ' . $class . ' [' . implode(', ', $take) . ']');
-                        }
-                    } else {
-                        $items = DataObject::get($class)->filter('ID', $take);
+                $take = array_slice($ids, 0, $batchSize);
+                $this->indexData[$class] = array_slice($ids, $batchSize);
 
-                        foreach ($items as $item) {
-                            if ($task->indexItem($item)) {
-                                $this->addMessage('Successfully indexed ' . $class . ' [' . $item->ID . ']');
+                if (!empty($take)) {
+                    $this->currentStep += count($take);
+                    $errors = [];
+
+                    try {
+                        if ($batching) {
+                            if ($task->indexItems($indexName, DataObject::get($class)->filter('ID', $take), false)) {
+                                $this->addMessage('Successfully indexing ' . $class . ' [' . implode(', ', $take) . ']');
                             } else {
-                                $this->addMessage('Error indexing ' . $class . ' [' . $item->ID . ']');
+                                $this->addMessage('Error indexing ' . $class . ' [' . implode(', ', $take) . ']');
+                            }
+                        } else {
+                            $items = DataObject::get($class)->filter('ID', $take);
+
+                            foreach ($items as $item) {
+                                if ($task->indexItem($item)) {
+                                    $this->addMessage('Successfully indexed ' . $class . ' [' . $item->ID . ']');
+                                } else {
+                                    $this->addMessage('Error indexing ' . $class . ' [' . $item->ID . ']');
+                                }
                             }
                         }
+
+                        $errors = $task->getErrors();
+                    } catch (Throwable $e) {
+                        $errors[] = $e->getMessage();
                     }
 
-                    $errors = $task->getErrors();
-                } catch (Throwable $e) {
-                    $errors[] = $e->getMessage();
+                    if (!empty($errors)) {
+                        $this->addMessage(implode(', ', $errors));
+                        $task->clearErrors();
+                    }
+                } else {
+                    unset($this->indexData[$class]);
                 }
-
-                if (!empty($errors)) {
-                    $this->addMessage(implode(', ', $errors));
-                    $task->clearErrors();
-                }
-            } else {
-                unset($this->indexData[$class]);
             }
         }
     }
