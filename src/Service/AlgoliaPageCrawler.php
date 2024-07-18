@@ -117,7 +117,7 @@ class AlgoliaPageCrawler
                 }
             }
         } catch (Throwable $e) {
-            Injector::inst()->create(LoggerInterface::class)->error($e);
+            Injector::inst()->get(LoggerInterface::class)->error($e);
         }
 
         SSViewer::set_themes($oldThemes);

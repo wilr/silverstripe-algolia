@@ -236,7 +236,7 @@ class AlgoliaObjectExtension extends DataExtension
                 return true;
             }
         } catch (Throwable $e) {
-            Injector::inst()->create(LoggerInterface::class)->error($e);
+            Injector::inst()->get(LoggerInterface::class)->error($e);
 
             $schema = DataObject::getSchema();
             $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaError');
@@ -291,7 +291,7 @@ class AlgoliaObjectExtension extends DataExtension
 
                 $this->markAsRemovedFromAlgoliaIndex();
             } catch (Throwable $e) {
-                Injector::inst()->create(LoggerInterface::class)->error($e);
+                Injector::inst()->get(LoggerInterface::class)->error($e);
 
                 return false;
             }

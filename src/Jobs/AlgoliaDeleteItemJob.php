@@ -55,7 +55,7 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
             $indexer = Injector::inst()->create(AlgoliaIndexer::class);
             $indexer->deleteItem($this->itemClass, $this->itemUUID);
         } catch (Throwable $e) {
-            Injector::inst()->create(LoggerInterface::class)->error($e);
+            Injector::inst()->get(LoggerInterface::class)->error($e);
         }
 
         $this->isComplete = true;
