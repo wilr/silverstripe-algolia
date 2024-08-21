@@ -4,3 +4,9 @@ Name: silverstripe-algolia
 SilverStripe\CMS\Model\SiteTree:
   extensions:
     - Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension
+SilverStripe\Subsites\Pages\SubsitesVirtualPage:
+  extensions:
+    - Wilr\SilverStripe\Algolia\Extensions\SubsitesVirtualPageExtension
+ilverStripe\CMS\Model\VirtualPage:
+  extensions:
+    - Wilr\SilverStripe\Algolia\Extensions\VirtualPageExtension

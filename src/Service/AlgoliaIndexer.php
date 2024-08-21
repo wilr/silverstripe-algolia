@@ -3,6 +3,7 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
+use Exception;
 use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
@@ -39,7 +40,11 @@ class AlgoliaIndexer
      * @config
      */
     private static $attributes_blacklisted = [
-        'ID', 'Title', 'ClassName', 'LastEdited', 'Created'
+        'ID',
+        'Title',
+        'ClassName',
+        'LastEdited',
+        'Created'
     ];
 
     /**
@@ -61,7 +66,14 @@ class AlgoliaIndexer
     public function indexItem($item)
     {
         $searchIndexes = $this->getService()->initIndexes($item);
-        $fields = $this->exportAttributesFromObject($item);
+
+        try {
+            $fields = $this->exportAttributesFromObject($item);
+        } catch (Exception $e) {
+            Injector::inst()->get(LoggerInterface::class)->error($e);
+
+            return false;
+        }
 
         if (method_exists($fields, 'toArray')) {
             $fields = $fields->toArray();
@@ -196,85 +208,93 @@ class AlgoliaIndexer
         $specs = $item->config()->get('algolia_index_fields');
 
         if ($specs) {
-            $maxFieldSize = $this->config()->get('max_field_size_bytes');
+            $attributes = $this->addSpecsToAttributes($item, $attributes, $specs);
+        }
 
-            foreach ($specs as $attributeName) {
-                if (in_array($attributeName, $this->config()->get('attributes_blacklisted'))) {
-                    continue;
-                }
+        $item->invokeWithExtensions('updateAlgoliaAttributes', $attributes);
 
-                // fetch the db object, or fallback to the getters but prefer
-                // the db object
-                try {
-                    $dbField = $item->relObject($attributeName);
-                } catch (LogicException $e) {
-                    $dbField = $item->{$attributeName};
-                }
+        return $attributes;
+    }
 
-                if (!$dbField) {
-                    continue;
-                }
 
-                if (is_string($dbField) || is_array($dbField)) {
-                    $attributes->push($attributeName, $dbField);
-                } elseif ($dbField instanceof DBForeignKey) {
-                    $attributes->push($attributeName, $dbField->Value);
-                } elseif ($dbField->exists() || $dbField instanceof DBBoolean) {
-                    if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
-                        // has-many, many-many, has-one
-                        $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
-                    } else {
-                        // db-field, if it's a date then use the timestamp since we need it
-                        $hasContent = true;
+    public function addSpecsToAttributes($item, $attributes, $specs)
+    {
+        $maxFieldSize = $this->config()->get('max_field_size_bytes');
 
-                        switch (get_class($dbField)) {
-                            case DBDate::class:
-                            case DBDatetime::class:
-                                $value = $dbField->getTimestamp();
-                                break;
-                            case DBBoolean::class:
-                                $value = $dbField->getValue();
-                                break;
-                            case DBHTMLText::class:
-                                $fieldData = $dbField->Plain();
-                                $fieldLength = mb_strlen($fieldData, '8bit');
+        foreach ($specs as $attributeName) {
+            if (in_array($attributeName, $this->config()->get('attributes_blacklisted'))) {
+                continue;
+            }
 
-                                if ($fieldLength > $maxFieldSize) {
-                                    $maxIterations = 100;
-                                    $i = 0;
+            // fetch the db object, or fallback to the getters but prefer
+            // the db object
+            try {
+                $dbField = $item->relObject($attributeName);
+            } catch (LogicException $e) {
+                $dbField = $item->{$attributeName};
+            }
 
-                                    while ($hasContent && $i < $maxIterations) {
-                                        $block = mb_strcut(
-                                            $fieldData,
-                                            $i * $maxFieldSize,
-                                            $maxFieldSize - 1
-                                        );
+            if (!$dbField) {
+                continue;
+            }
 
-                                        if ($block) {
-                                            $attributes->push($attributeName . '_Block' . $i, $block);
-                                        } else {
-                                            $hasContent = false;
-                                        }
+            if (is_string($dbField) || is_array($dbField)) {
+                $attributes->push($attributeName, $dbField);
+            } elseif ($dbField instanceof DBForeignKey) {
+                $attributes->push($attributeName, $dbField->Value);
+            } elseif ($dbField->exists() || $dbField instanceof DBBoolean) {
+                if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
+                    // has-many, many-many, has-one
+                    $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
+                } else {
+                    // db-field, if it's a date then use the timestamp since we need it
+                    $hasContent = true;
 
-                                        $i++;
+                    switch (get_class($dbField)) {
+                        case DBDate::class:
+                        case DBDatetime::class:
+                            $value = $dbField->getTimestamp();
+                            break;
+                        case DBBoolean::class:
+                            $value = $dbField->getValue();
+                            break;
+                        case DBHTMLText::class:
+                            $fieldData = $dbField->Plain();
+                            $fieldLength = mb_strlen($fieldData, '8bit');
+
+                            if ($fieldLength > $maxFieldSize) {
+                                $maxIterations = 100;
+                                $i = 0;
+
+                                while ($hasContent && $i < $maxIterations) {
+                                    $block = mb_strcut(
+                                        $fieldData,
+                                        $i * $maxFieldSize,
+                                        $maxFieldSize - 1
+                                    );
+
+                                    if ($block) {
+                                        $attributes->push($attributeName . '_Block' . $i, $block);
+                                    } else {
+                                        $hasContent = false;
                                     }
-                                } else {
-                                    $value = $fieldData;
-                                }
-                                break;
-                            default:
-                                $value = @$dbField->forTemplate();
-                        }
 
-                        if ($hasContent) {
-                            $attributes->push($attributeName, $value);
-                        }
+                                    $i++;
+                                }
+                            } else {
+                                $value = $fieldData;
+                            }
+                            break;
+                        default:
+                            $value = @$dbField->forTemplate();
+                    }
+
+                    if ($hasContent) {
+                        $attributes->push($attributeName, $value);
                     }
                 }
             }
         }
-
-        $item->invokeWithExtensions('updateAlgoliaAttributes', $attributes);
 
         return $attributes;
     }
