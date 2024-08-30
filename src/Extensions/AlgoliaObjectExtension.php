@@ -176,11 +176,15 @@ class AlgoliaObjectExtension extends DataExtension
 
         if ($table && count($fields)) {
             $sets = [];
+
             foreach ($fields as $field => $value) {
                 $sets[] = "$field = $value";
             }
+
             $set = implode(', ', $sets);
-            DB::query(sprintf('UPDATE %s SET %s WHERE ID = %s', $table, $set, $this->owner->ID));
+            $query = sprintf('UPDATE %s SET %s WHERE ID = %s', $table, $set, $this->owner->ID);
+
+            DB::query($query);
 
             if ($this->owner->hasExtension(Versioned::class) && $this->owner->hasStages()) {
                 DB::query(
@@ -311,10 +315,12 @@ class AlgoliaObjectExtension extends DataExtension
     public function assignAlgoliaUUID($writeImmediately = true)
     {
         $uuid = Uuid::uuid4();
-        $this->owner->AlgoliaUUID = $uuid->toString();
+        $value = $uuid->toString();
+
+        $this->owner->AlgoliaUUID = $value;
 
         if ($writeImmediately) {
-            $this->updateAlgoliaFields(['AlgoliaUUID' => "'" . $this->owner->AlgoliaUUID . "'"]);
+            $this->updateAlgoliaFields(['AlgoliaUUID' => "'$value'"]);
         }
     }
 

@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Tasks;
 
+use SilverStripe\CMS\Model\VirtualPage;
 use SilverStripe\Core\Environment;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataObject;
@@ -24,14 +25,14 @@ class AlgoliaReindexItem extends BuildTask
         if ($request->getVar('class')) {
             $targetClass = $request->getVar('class');
         } else {
-            echo 'Missing class';
+            echo 'Missing class argument';
             exit;
         }
 
         if ($request->getVar('id')) {
             $id = $request->getVar('id');
         } else {
-            echo 'Missing class';
+            echo 'Missing id argument';
             exit;
         }
 
@@ -44,15 +45,19 @@ class AlgoliaReindexItem extends BuildTask
 
         // Set AlgoliaUUID, in case it wasn't previously set
         if (!$obj->AlgoliaUUID) {
+            echo 'No AlgoliaUUID set on object, generating one...' . PHP_EOL;
             $obj->assignAlgoliaUUID(true);
         }
+
 
         $result = $obj->doImmediateIndexInAlgolia();
 
         echo sprintf(
-            'Indexed: %s, UUID: %s',
+            'Indexed: %s%sUUID: %s%s%s',
             $result ? 'true' : 'false',
-            $obj->AlgoliaUUID,
+            PHP_EOL,
+            $obj->AlgoliaUUID ? $obj->AlgoliaUUID : 'No ID set',
+            PHP_EOL,
             $obj->AlgoliaError ? 'Error from Algolia: ' . $obj->AlgoliaError : ''
         );
     }

@@ -7,6 +7,10 @@ SilverStripe\CMS\Model\SiteTree:
 SilverStripe\Subsites\Pages\SubsitesVirtualPage:
   extensions:
     - Wilr\SilverStripe\Algolia\Extensions\SubsitesVirtualPageExtension
-ilverStripe\CMS\Model\VirtualPage:
+SilverStripe\CMS\Model\VirtualPage:
   extensions:
     - Wilr\SilverStripe\Algolia\Extensions\VirtualPageExtension
+  non_virtual_fields:
+    - AlgoliaUUID
+    - AlgoliaIndexed
+    - AlgoliaError
