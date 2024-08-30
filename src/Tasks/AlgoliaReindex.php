@@ -77,7 +77,9 @@ class AlgoliaReindex extends BuildTask
 
         // find all classes we have to index and do so
         foreach ($algoliaService->indexes as $indexName => $index) {
-            echo 'Updating index ' . $indexName . PHP_EOL;
+            $environmentizedIndexName = $algoliaService->environmentizeIndex($indexName);
+
+            echo 'Updating index ' . $environmentizedIndexName . PHP_EOL;
 
             $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
             $indexFilters = (isset($index['includeFilter'])) ? $index['includeFilter'] : [];
@@ -85,16 +87,24 @@ class AlgoliaReindex extends BuildTask
             if ($classes) {
                 foreach ($classes as $candidate) {
                     if ($targetClass && $targetClass !== $candidate) {
-                        continue;
+                        // check to see if target class is a subclass of the candidate
+                        if (!is_subclass_of($targetClass, $candidate)) {
+                            continue;
+                        } else {
+                            $candidate = $targetClass;
+                        }
                     }
 
 
                     $items = $this->getItems($candidate, $filter, $indexFilters);
+
+                    $filterLabel = implode(',', array_filter(array_merge([$filter], [$indexFilters[$candidate] ?? ''])));
+
                     echo sprintf(
-                        '| Found %s %s remaining to index which match filter (%s)%s',
+                        '| Found %s %s remaining to index %s%s',
                         $items->count(),
                         $candidate,
-                        implode(',', array_merge([$filter], [$indexFilters[$candidate] ?? ''])),
+                        $filterLabel ? 'which match filters ' .  $filterLabel : '',
                         PHP_EOL
                     );
 
@@ -106,7 +116,7 @@ class AlgoliaReindex extends BuildTask
         }
 
 
-        echo 'Done';
+        echo 'Done' . PHP_EOL;
     }
 
 
