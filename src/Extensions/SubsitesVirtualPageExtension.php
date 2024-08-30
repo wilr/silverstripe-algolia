@@ -44,6 +44,8 @@ class SubsitesVirtualPageExtension extends \SilverStripe\ORM\DataExtension
             return $attributes;
         });
 
+        $attributes->push('SubsiteID', $this->owner->SubsiteID);
+
         return $result;
     }
 }

@@ -231,11 +231,22 @@ class AlgoliaObjectExtension extends DataExtension
             return false;
         }
 
+
+        $schema = DataObject::getSchema();
+        $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaError');
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         try {
             if ($indexer->indexItem($this->owner)) {
                 $this->touchAlgoliaIndexedDate();
+
+                DB::query(
+                    sprintf(
+                        'UPDATE %s SET AlgoliaError = \'\' WHERE ID = %s',
+                        $table,
+                        $this->owner->ID
+                    )
+                );
 
                 return true;
             } else {
@@ -243,9 +254,6 @@ class AlgoliaObjectExtension extends DataExtension
             }
         } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
-
-            $schema = DataObject::getSchema();
-            $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaError');
 
             DB::query(
                 sprintf(

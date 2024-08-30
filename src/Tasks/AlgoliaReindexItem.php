@@ -4,8 +4,10 @@ namespace Wilr\SilverStripe\Algolia\Tasks;
 
 use SilverStripe\CMS\Model\VirtualPage;
 use SilverStripe\Core\Environment;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataObject;
+use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 class AlgoliaReindexItem extends BuildTask
 {
@@ -49,12 +51,19 @@ class AlgoliaReindexItem extends BuildTask
             $obj->assignAlgoliaUUID(true);
         }
 
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $service = $indexer->getService();
+
+        echo 'Indexing to Algolia indexes (';
+        echo implode(', ', array_map(function ($indexName) use ($service) {
+            return $service->environmentizeIndex($indexName);
+        }, array_keys($service->initIndexes($obj)))) . ')' . PHP_EOL;
 
         $result = $obj->doImmediateIndexInAlgolia();
 
         echo sprintf(
             'Indexed: %s%sUUID: %s%s%s',
-            $result ? 'true' : 'false',
+            $result ? 'true ' . '(timestamp ' . $obj->AlgoliaIndexed . ')' : 'false',
             PHP_EOL,
             $obj->AlgoliaUUID ? $obj->AlgoliaUUID : 'No ID set',
             PHP_EOL,
