@@ -82,10 +82,13 @@ class AlgoliaIndexer
         if ($searchIndexes) {
             $output = true;
             foreach ($searchIndexes as $searchIndex) {
-                $result = $searchIndex->saveObject($fields);
+                $result = $searchIndex->saveObject($fields, [
+                    'autoGenerateObjectIDIfNotExist' => true
+                ]);
 
                 if (!$result->valid()) {
                     $output = false;
+                } else {
                 }
             }
 

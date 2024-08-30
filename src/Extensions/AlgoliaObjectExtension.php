@@ -234,6 +234,8 @@ class AlgoliaObjectExtension extends DataExtension
                 $this->touchAlgoliaIndexedDate();
 
                 return true;
+            } else {
+                return false;
             }
         } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);

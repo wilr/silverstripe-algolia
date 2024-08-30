@@ -42,8 +42,18 @@ class AlgoliaReindexItem extends BuildTask
             exit;
         }
 
+        // Set AlgoliaUUID, in case it wasn't previously set
+        if (!$obj->AlgoliaUUID) {
+            $obj->assignAlgoliaUUID(true);
+        }
+
         $result = $obj->doImmediateIndexInAlgolia();
 
-        echo sprintf('Indexed: %s, UUID: %s, Err: %s', $result, $obj->AlgoliaUUID, $obj->AlgoliaError);
+        echo sprintf(
+            'Indexed: %s, UUID: %s',
+            $result ? 'true' : 'false',
+            $obj->AlgoliaUUID,
+            $obj->AlgoliaError ? 'Error from Algolia: ' . $obj->AlgoliaError : ''
+        );
     }
 }
