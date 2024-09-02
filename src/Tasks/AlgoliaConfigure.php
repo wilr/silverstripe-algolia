@@ -24,6 +24,11 @@ class AlgoliaConfigure extends BuildTask
     {
         $service = Injector::inst()->get(AlgoliaService::class);
 
+        if (!$this->isEnabled()) {
+            echo 'This task is disabled.' . PHP_EOL;
+            return;
+        }
+
         try {
             if ($service->syncSettings()) {
                 echo 'Success.' . PHP_EOL;

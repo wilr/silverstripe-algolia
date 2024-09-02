@@ -19,6 +19,7 @@ use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
+use Wilr\SilverStripe\Algolia\Tasks\AlgoliaConfigure;
 
 class AlgoliaObjectExtension extends DataExtension
 {
@@ -84,29 +85,6 @@ class AlgoliaObjectExtension extends DataExtension
                     ReadonlyField::create('AlgoliaUUID', _t(__CLASS__ . '.UUID', 'Algolia UUID'))
                 ]
             );
-        }
-    }
-
-    /**
-     * On dev/build ensure that the indexer settings are up to date.
-     */
-    public function requireDefaultRecords()
-    {
-        if ($this->ranSync) {
-            return false;
-        }
-
-        $this->ranSync = true;
-        $algolia = Injector::inst()->create(AlgoliaService::class);
-
-        if (!$this->indexEnabled()) {
-            return;
-        }
-
-        try {
-            $algolia->syncSettings();
-        } catch (Throwable $e) {
-            DB::alteration_message($e->getMessage(), 'error');
         }
     }
 
