@@ -35,6 +35,7 @@ class SubsitesVirtualPageExtension extends \SilverStripe\ORM\DataExtension
             }
 
             $attributes->push('objectClassName', $originalObject->ClassName);
+            $attributes->push('objectSubsiteID', $this->owner->SubsiteID);
 
             $specs = $originalObject->config()->get('algolia_index_fields');
             $attributes = $indexer->addSpecsToAttributes($originalObject, $attributes, $specs);
