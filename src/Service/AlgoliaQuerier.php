@@ -54,7 +54,7 @@ class AlgoliaQuerier
         }
 
         $records = ArrayList::create();
-        $totalItems = $results['nbHits'];
+        $totalItems = $results['nbHits'] ?? 0;
 
         if ($results && isset($results['hits'])) {
             foreach ($results['hits'] as $hit) {
