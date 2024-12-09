@@ -2,7 +2,6 @@
 
 namespace Wilr\SilverStripe\Algolia\Service;
 
-use Exception;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
@@ -23,7 +22,7 @@ class AlgoliaQuerier
      * @param string $selectedIndex
      * @param string $query
      * @param array  $searchParameters
-     * @param array  $ORMFilters filter ORM objects prior to returning the results as a PaginatedList
+     * @param array $ORMFilters This argument is used to filter ORM objects prior to returning the results as a PaginatedList
      *
      * @return PaginatedList
      */
@@ -55,6 +54,7 @@ class AlgoliaQuerier
         }
 
         $records = ArrayList::create();
+        $totalItems = $results['nbHits'];
 
         if ($results && isset($results['hits'])) {
             foreach ($results['hits'] as $hit) {
@@ -62,6 +62,7 @@ class AlgoliaQuerier
                 $id = isset($hit['objectSilverstripeID']) ? $hit['objectSilverstripeID'] : null;
 
                 if (!$id || !$className) {
+                    $totalItems--;
                     continue;
                 }
 
@@ -70,6 +71,8 @@ class AlgoliaQuerier
 
                     if ($record && $record->canView()) {
                         $records->push($record);
+                    } else {
+                        $totalItems--;
                     }
                 } catch (Throwable $e) {
                     Injector::inst()->get(LoggerInterface::class)->notice($e);
@@ -87,14 +90,11 @@ class AlgoliaQuerier
 
         if ($results) {
             $output = $output->setCurrentPage($results['page'] + 1)
-                ->setTotalItems($results['nbHits'])
+                ->setTotalItems($totalItems)
                 ->setLimitItems(false)
                 ->setPageStart($results['page'] * $results['hitsPerPage'])
                 ->setPageLength($results['hitsPerPage']);
         }
-
-        // add raw output from algoia for manipulation
-        $output->raw = $results;
 
         return $output;
     }
