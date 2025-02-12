@@ -46,6 +46,7 @@ class AlgoliaReindex extends BuildTask
 
         $targetClass = '';
         $filter = '';
+        $subsite = null;
         $defaultFilters = $this->config()->get('reindexing_default_filters');
 
         if ($request->getVar('onlyClass')) {
@@ -62,6 +63,10 @@ class AlgoliaReindex extends BuildTask
 
         if (!$request->getVar('forceAll') && !$filter) {
             $filter = 'AlgoliaIndexed IS NULL';
+        }
+
+        if ($request->getVar('SubsiteID')) {
+            $subsite = $request->getVar('SubsiteID');
         }
 
         /** @var AlgoliaService */
@@ -97,6 +102,10 @@ class AlgoliaReindex extends BuildTask
 
 
                     $items = $this->getItems($candidate, $filter, $indexFilters);
+
+                    if (!$subsite) {
+                        $items = $items->setDataQueryParam('Subsite.filter', false);
+                    }
 
                     $filterLabel = implode(',', array_filter(array_merge([$filter], [$indexFilters[$candidate] ?? ''])));
 
@@ -145,7 +154,6 @@ class AlgoliaReindex extends BuildTask
             $items = $items->where($indexFilters[$targetClass]);
         }
 
-        $items = $items->setDataQueryParam('Subsite.filter', false);
 
         return $items;
     }
