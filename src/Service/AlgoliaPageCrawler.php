@@ -113,7 +113,7 @@ class AlgoliaPageCrawler
                 }
 
                 if (isset($nodes[0])) {
-                    $output = preg_replace('/\s+/', ' ', $nodes[0]->nodeValue);
+                    $output = $this->processMainContent($nodes[0]->nodeValue);
                 }
             }
         } catch (Throwable $e) {
@@ -131,5 +131,27 @@ class AlgoliaPageCrawler
         }
 
         return $output;
+    }
+
+    /**
+     * Process page DOM content
+     * 
+     * @param string $content DOM node content
+     */
+    private function processMainContent($content): string
+    {
+        // Clean up the DOM content
+        $content = preg_replace('/\s+/', ' ', $content);
+        $content = trim($content);
+
+        // set cutoff to allow room for other fields
+        $cutoff = $this->config()->get('content_cutoff_bytes') - 20000;
+
+        // If content is still too large, truncate it
+        if (strlen($content) >= $cutoff) {
+            $content = mb_strcut($content, 0, $cutoff);
+        }
+
+        return $content;
     }
 }
