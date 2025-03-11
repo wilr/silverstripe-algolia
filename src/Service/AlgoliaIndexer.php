@@ -401,9 +401,13 @@ class AlgoliaIndexer
     {
         $indexes = $this->getService()->initIndexes($item);
 
+        if (!$item->AlgoliaUUID) {
+            return [];
+        }
+        
         foreach ($indexes as $index) {
             try {
-                $output = $index->getObject($item);
+                $output = $index->getObject($item->AlgoliaUUID);
 
                 if ($output) {
                     return $output;
@@ -411,5 +415,7 @@ class AlgoliaIndexer
             } catch (NotFoundException $ex) {
             }
         }
+
+        return [];
     }
 }
