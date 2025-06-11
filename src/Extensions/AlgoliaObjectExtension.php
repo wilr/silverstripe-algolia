@@ -7,21 +7,19 @@ use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\ReadonlyField;
-use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DB;
 use Ramsey\Uuid\Uuid;
 use SilverStripe\Core\Convert;
+use SilverStripe\Core\Extension;
 use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use Throwable;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
-use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
-use Wilr\SilverStripe\Algolia\Tasks\AlgoliaConfigure;
 
-class AlgoliaObjectExtension extends DataExtension
+class AlgoliaObjectExtension extends Extension
 {
     use Configurable;
 

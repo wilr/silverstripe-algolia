@@ -4,49 +4,57 @@ namespace Wilr\SilverStripe\Algolia\Tasks;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 class AlgoliaInspect extends BuildTask
 {
-    private static $segment = 'AlgoliaInspect';
+    protected string $title = 'Algolia Inspect';
 
-    public function run($request)
+    protected static string $description = 'Inspect Algolia index configuration';
+
+    protected static string $commandName = 'algolia:inspect';
+
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
-        $itemClass = $request->getVar('class');
-        $itemId = $request->getVar('id');
+        $itemClass = $input->getOption('class');
+        $itemId = $input->getOption('id');
 
         if (!$itemClass || !$itemId) {
-            echo 'Missing class or id parameters';
-            exit();
+            $output->writeln('Missing class or id parameters');
+
+            return Command::FAILURE;
         }
 
         $item = $itemClass::get()->byId($itemId);
 
         if (!$item || !$item->canView()) {
-            echo 'Missing or unviewable object '. $itemClass . ' #'. $itemId;
-            exit();
+            $output->writeln('Missing or unviewable object ' . $itemClass . ' #' . $itemId);
+            return Command::FAILURE;
         }
 
         $indexer = Injector::inst()->create(AlgoliaIndexer::class);
         $indexer->getService()->syncSettings();
 
-        echo '### LOCAL FIELDS' . PHP_EOL;
-        echo '<pre>';
-        print_r($indexer->exportAttributesFromObject($item));
+        $output->writeln('### LOCAL FIELDS ###');
+        $output->writeln('<pre>');
+        $output->writeln(print_r($indexer->exportAttributesFromObject($item), true));
 
-        echo '### REMOTE FIELDS ###' . PHP_EOL;
-        print_r($indexer->getObject($item));
+        $output->writeln('### REMOTE FIELDS ###');
+        $output->writeln(print_r($indexer->getObject($item), true));
 
-        echo '### INDEX SETTINGS ### '. PHP_EOL;
+        $output->writeln('### INDEX SETTINGS ###');
         foreach ($item->getAlgoliaIndexes() as $index) {
-            print_r($index->getSettings());
+            $output->writeln(print_r($index->getSettings(), true));
         }
 
-        echo '### ALGOLIA STATUS ### '. PHP_EOL;
-        echo 'Error: '. $item->AlgoliaError . PHP_EOL;
-        echo 'LastIndexed: ' . $item->AlgoliaIndexed . PHP_EOL;
-        echo 'Algolia UUID: '. $item->AlgoliaUUID . PHP_EOL;
+        $output->writeln('### ALGOLIA STATUS ###');
+        $output->writeln('Error: ' . $item->AlgoliaError);
+        $output->writeln('LastIndexed: ' . $item->AlgoliaIndexed);
+        $output->writeln('Algolia UUID: ' . $item->AlgoliaUUID);
 
-        echo PHP_EOL . 'Done.' . PHP_EOL;
+        return Command::SUCCESS;
     }
 }

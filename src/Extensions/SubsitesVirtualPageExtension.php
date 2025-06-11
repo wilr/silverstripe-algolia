@@ -2,16 +2,20 @@
 
 namespace Wilr\SilverStripe\Algolia\Extensions;
 
+use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\Map;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\List\Map;
 use SilverStripe\Subsites\Model\Subsite;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
-class SubsitesVirtualPageExtension extends \SilverStripe\ORM\DataExtension
+class SubsitesVirtualPageExtension extends Extension
 {
     public function exportObjectToAlgolia($toIndex)
     {
+        if (!class_exists(Subsite::class)) {
+            return $toIndex;
+        }
         $attributes = new Map(ArrayList::create());
 
         foreach ($toIndex as $k => $v) {

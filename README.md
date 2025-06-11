@@ -10,7 +10,7 @@
 
 ## Installation
 
-```
+```sh
 composer require "wilr/silverstripe-algolia"
 ```
 
@@ -85,7 +85,7 @@ type is prefixed to the names listed in the main YAML config.
 If you explictly want to disable the environment prefix (or use a custom
 approach) use the `ALGOLIA_PREFIX_INDEX_NAME` environment variable.
 
-```
+```yml
 ALGOLIA_PREFIX_INDEX_NAME='dev_will'
 ```
 
@@ -138,8 +138,9 @@ If installing on a existing website run the `AlgoliaReindex` task (via CLI) to
 import existing data. This will batch import all the records from your database
 into the indexes configured above.
 
-```
-./vendor/bin/sake dev/tasks/AlgoliaReindex "flush=1"
+```sh
+./vendor/bin/sake algolia:configure
+./vendor/bin/sake algolia:index
 ```
 
 Individually records will be indexed automatically going forward via the
@@ -152,8 +153,8 @@ calling `$item->indexInAlgolia()` and `$item->removeFromAlgolia()`.
 indexing. For instance, if you have a large amount of JobVacancies to bulk
 import but only need the active ones you can trigger the task as follows:
 
-```
-/vendor/bin/sake dev/tasks/AlgoliaReindex "onlyClass=Vacancy&filter=ExpiryDate>NOW()"
+```sh
+/vendor/bin/sake algolia:index --onlyClass="onlyClass=Vacancy" --filter="ExpiryDate>NOW()"
 ```
 
 If you do not have access to a CLI (i.e Silverstripe Cloud) then you can also
@@ -161,16 +162,16 @@ bulk reindex via a queued job `AlgoliaReindexAllJob`.
 
 ### Optional
 
-`forceAll` forces every Silverstripe record to be re-synced.
+`force` forces every Silverstripe record to be re-synced.
 
-```
-./vendor/bin/sake dev/tasks/AlgoliaReindex "flush=1&forceAll=1"
+```sh
+./vendor/bin/sake algolia:index --force
 ```
 
-`clearAll` truncates the search index before reindexing.
+`clear` truncates the search index before re-indexing.
 
-```
-./vendor/bin/sake dev/tasks/AlgoliaReindex "flush=1&clearAll=1&forceAll=1"
+```sh
+./vendor/bin/sake algolia:index --clear
 ```
 
 ### Customising the indexed attributes (fields)
@@ -357,7 +358,7 @@ and at the query time.
 
 Step 1. Add the field to Algolia
 
-```
+```yml
 SilverStripe\Core\Injector\Injector:
   Wilr\SilverStripe\Algolia\Service\AlgoliaService:
     properties:
@@ -384,9 +385,7 @@ SilverStripe\Core\Injector\Injector:
 
 Step 2. Expose the field on `SiteTree` via a DataExtension (make sure to apply the extension)
 
-```
-<?php
-
+```php
 class SiteTreeExtension extends DataExtension
 {
     private static $algolia_index_fields = [
@@ -398,8 +397,6 @@ class SiteTreeExtension extends DataExtension
 Step 3. Filter by the Subsite ID in your results
 
 ```php
-<?php
-
 use SilverStripe\Core\Injector\Injector;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier;
 
@@ -438,44 +435,44 @@ The `includeFilter` should be in the format `{$Class}`: `{$WhereQuery}` where
 the `$WhereQuery` is a basic SQL statement performed by the ORM on the given
 class.
 
-```
+```yml
 SilverStripe\Core\Injector\Injector:
-  Wilr\SilverStripe\Algolia\Service\AlgoliaService:
-    properties:
-      adminApiKey: "`ALGOLIA_ADMIN_API_KEY`"
-      searchApiKey: "`ALGOLIA_SEARCH_API_KEY`"
-      applicationId: "`ALGOLIA_SEARCH_APP_ID`"
-      indexes:
-        index_main_site:
-          includeClasses:
-            - SilverStripe\CMS\Model\SiteTree
-          includeFilter:
-            "SilverStripe\\CMS\\Model\\SiteTree": "SubsiteID = 0"
-          indexSettings:
-            distinct: true
-            attributeForDistinct: "objectLink"
-            searchableAttributes:
-              - objectTitle
-              - objectContent
-              - objectLink
-              - Summary
-              - objectForTemplate
-            attributesForFaceting:
-              - "filterOnly(objectClassName)"
-        index_subsite_pages:
-          includeClasses:
-            - SilverStripe\CMS\Model\SiteTree
-          includeFilter:
-            "SilverStripe\\CMS\\Model\\SiteTree": "SubsiteID > 0"
-          indexSettings:
-            distinct: true
-            attributeForDistinct: "objectLink"
-            searchableAttributes:
-              - objectTitle
-              - objectContent
-              - objectLink
-              - Summary
-              - objectForTemplate
-            attributesForFaceting:
-              - "filterOnly(objectClassName)"
+    Wilr\SilverStripe\Algolia\Service\AlgoliaService:
+        properties:
+            adminApiKey: "`ALGOLIA_ADMIN_API_KEY`"
+            searchApiKey: "`ALGOLIA_SEARCH_API_KEY`"
+            applicationId: "`ALGOLIA_SEARCH_APP_ID`"
+            indexes:
+                index_main_site:
+                    includeClasses:
+                        - SilverStripe\CMS\Model\SiteTree
+                    includeFilter:
+                        "SilverStripe\\CMS\\Model\\SiteTree": "SubsiteID = 0"
+                    indexSettings:
+                        distinct: true
+                        attributeForDistinct: "objectLink"
+                        searchableAttributes:
+                            - objectTitle
+                            - objectContent
+                            - objectLink
+                            - Summary
+                            - objectForTemplate
+                        attributesForFaceting:
+                            - "filterOnly(objectClassName)"
+                index_subsite_pages:
+                    includeClasses:
+                        - SilverStripe\CMS\Model\SiteTree
+                    includeFilter:
+                        "SilverStripe\\CMS\\Model\\SiteTree": "SubsiteID > 0"
+                    indexSettings:
+                        distinct: true
+                        attributeForDistinct: "objectLink"
+                        searchableAttributes:
+                            - objectTitle
+                            - objectContent
+                            - objectLink
+                            - Summary
+                            - objectForTemplate
+                        attributesForFaceting:
+                            - "filterOnly(objectClassName)"
 ```

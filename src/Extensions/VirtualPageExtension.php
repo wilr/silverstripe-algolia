@@ -2,12 +2,13 @@
 
 namespace Wilr\SilverStripe\Algolia\Extensions;
 
+use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\Map;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\List\Map;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
-class VirtualPageExtension extends \SilverStripe\ORM\DataExtension
+class VirtualPageExtension extends Extension
 {
     public function exportObjectToAlgolia($toIndex)
     {

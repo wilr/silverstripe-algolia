@@ -4,41 +4,47 @@ namespace Wilr\SilverStripe\Algolia\Tasks;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 
 /**
  * Syncs index settings to Algolia.
  *
- * Note this runs on dev/build automatically but is provided seperately for
+ * Note this runs on dev/build automatically but is provided separately for
  * uses where dev/build is slow (e.g 100,000+ record tables)
  */
 class AlgoliaConfigure extends BuildTask
 {
-    protected $title = 'Algolia Configure';
+    protected string $title = 'Algolia Configure';
 
-    protected $description = 'Sync Algolia index configuration';
+    protected static string $description = 'Sync Algolia index configuration';
 
-    private static $segment = 'AlgoliaConfigure';
+    protected static string $commandName = 'algolia:configure';
 
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         $service = Injector::inst()->get(AlgoliaService::class);
 
         if (!$this->isEnabled()) {
-            echo 'This task is disabled.' . PHP_EOL;
-            return;
+            $output->writeln('This task is disabled.');
+            return Command::FAILURE;
         }
 
         try {
             if ($service->syncSettings()) {
-                echo 'Success.' . PHP_EOL;
-            } else {
-                echo 'An error occurred while syncing the settings. Please check your error logs.' . PHP_EOL;
+                $output->writeln('Algolia settings synced successfully.' . PHP_EOL);
+
+                return Command::SUCCESS;
             }
+
+            $output->writeln('An error occurred while syncing the settings. Please check your error logs.');
         } catch (\Exception $e) {
-            echo 'An error occurred while syncing the settings. Please check your error logs.' . PHP_EOL;
-            echo $e->getMessage() . PHP_EOL;
+            $output->writeln('An error occurred while syncing the settings. Please check your error logs.');
+            $output->writeln('Error: ' . $e->getMessage());
         }
-        echo 'Done.';
+
+        return Command::FAILURE;
     }
 }

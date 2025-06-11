@@ -2,72 +2,86 @@
 
 namespace Wilr\SilverStripe\Algolia\Tasks;
 
-use SilverStripe\CMS\Model\VirtualPage;
 use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 class AlgoliaReindexItem extends BuildTask
 {
-    protected $title = 'Algolia Reindex Item';
+    protected static string $commandName = 'algolia:index-item';
 
-    protected $description = 'Algolia reindex a single item';
+    protected string $title = 'Algolia Reindex Item';
 
-    private static $segment = 'AlgoliaReindexItem';
+    protected static string $description = 'Reindex a single item to Algolia';
 
     protected $errors = [];
 
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo();
 
-        if ($request->getVar('class')) {
-            $targetClass = $request->getVar('class');
+        if ($input->getOption('class')) {
+            $targetClass = $input->getOption('class');
         } else {
-            echo 'Missing class argument';
-            exit;
+            $output->writeln('<error>Missing class argument</error>');
+            return Command::FAILURE;
         }
 
-        if ($request->getVar('id')) {
-            $id = $request->getVar('id');
+        if ($input->getOption('id')) {
+            $id = $input->getOption('id');
         } else {
-            echo 'Missing id argument';
-            exit;
+            $output->writeln('<error>Missing id argument</error>');
+            return Command::FAILURE;
         }
 
         $obj = DataObject::get($targetClass)->byID($id);
 
         if (!$obj) {
-            echo 'Object not found';
-            exit;
+            $output->writeln('<error>Object not found</error>');
+            return Command::FAILURE;
         }
 
         // Set AlgoliaUUID, in case it wasn't previously set
         if (!$obj->AlgoliaUUID) {
-            echo 'No AlgoliaUUID set on object, generating one...' . PHP_EOL;
+            $output->writeln('No AlgoliaUUID set on object, generating one...');
             $obj->assignAlgoliaUUID(true);
         }
 
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
         $service = $indexer->getService();
 
-        echo 'Indexing to Algolia indexes (';
-        echo implode(', ', array_map(function ($indexName) use ($service) {
+        $output->write('Indexing to Algolia indexes (');
+        $output->write(implode(', ', array_map(function ($indexName) use ($service) {
             return $service->environmentizeIndex($indexName);
-        }, array_keys($service->initIndexes($obj)))) . ')' . PHP_EOL;
+        }, array_keys($service->initIndexes($obj)))));
+        $output->writeln(')');
 
         $result = $obj->doImmediateIndexInAlgolia();
 
-        echo sprintf(
+        $output->writeln(sprintf(
             'Indexed: %s%sUUID: %s%s%s',
             $result ? 'true ' . '(timestamp ' . $obj->AlgoliaIndexed . ')' : 'false',
             PHP_EOL,
             $obj->AlgoliaUUID ? $obj->AlgoliaUUID : 'No ID set',
             PHP_EOL,
             $obj->AlgoliaError ? 'Error from Algolia: ' . $obj->AlgoliaError : ''
-        );
+        ));
+
+        return $result ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    public function getOptions(): array
+    {
+        return [
+            new InputOption('class', null, InputOption::VALUE_REQUIRED, 'The class name of the object to reindex'),
+            new InputOption('id', null, InputOption::VALUE_REQUIRED, 'The ID of the object to reindex'),
+        ];
     }
 }

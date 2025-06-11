@@ -9,8 +9,12 @@ use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\Dev\Debug;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\ORM\Map;
+use SilverStripe\Model\List\Map;
 use SilverStripe\Versioned\Versioned;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Throwable;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
@@ -21,11 +25,11 @@ use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
  */
 class AlgoliaReindex extends BuildTask
 {
-    protected $title = 'Algolia Reindex';
+    protected static string $commandName = 'algolia:index';
 
-    protected $description = 'Algolia Reindex';
+    protected string $title = 'Algolia Reindex';
 
-    private static $segment = 'AlgoliaReindex';
+    protected static string $description = 'Reindex objects to Algolia';
 
     private static $batch_size = 20;
 
@@ -39,7 +43,7 @@ class AlgoliaReindex extends BuildTask
 
     protected $errors = [];
 
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo();
@@ -49,30 +53,30 @@ class AlgoliaReindex extends BuildTask
         $subsite = null;
         $defaultFilters = $this->config()->get('reindexing_default_filters');
 
-        if ($request->getVar('onlyClass')) {
-            $targetClass = $request->getVar('onlyClass');
+        if ($input->getOption('only')) {
+            $targetClass = $input->getOption('only');
 
             if ($defaultFilters && isset($defaultFilters[$targetClass])) {
                 $filter = $defaultFilters[$targetClass];
             }
         }
 
-        if ($request->getVar('filter')) {
-            $filter = $request->getVar('filter');
+        if ($input->getOption('filter')) {
+            $filter = $input->getOption('filter');
         }
 
-        if (!$request->getVar('forceAll') && !$filter) {
+        if (!$input->getOption('force') && !$filter) {
             $filter = 'AlgoliaIndexed IS NULL';
         }
 
-        if ($request->getVar('SubsiteID')) {
-            $subsite = $request->getVar('SubsiteID');
+        if ($input->getOption('subsite')) {
+            $subsite = $input->getOption('subsite');
         }
 
         /** @var AlgoliaService */
         $algoliaService = Injector::inst()->create(AlgoliaService::class);
 
-        if ($request->getVar('clearAll')) {
+        if ($input->getOption('clear')) {
             $indexes = $algoliaService->initIndexes();
 
             foreach ($indexes as $indexName => $index) {
@@ -84,7 +88,7 @@ class AlgoliaReindex extends BuildTask
         foreach ($algoliaService->indexes as $indexName => $index) {
             $environmentizedIndexName = $algoliaService->environmentizeIndex($indexName);
 
-            echo 'Updating index ' . $environmentizedIndexName . PHP_EOL;
+            $output->writeln('Updating index ' . $environmentizedIndexName);
 
             $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
             $indexFilters = (isset($index['includeFilter'])) ? $index['includeFilter'] : [];
@@ -109,25 +113,33 @@ class AlgoliaReindex extends BuildTask
 
                     $filterLabel = implode(',', array_filter(array_merge([$filter], [$indexFilters[$candidate] ?? ''])));
 
-                    echo sprintf(
-                        '| Found %s %s remaining to index %s%s',
+                    $output->writeln(sprintf(
+                        '| Found %s %s remaining to index %s',
                         $items->count(),
                         $candidate,
-                        $filterLabel ? 'which match filters ' .  $filterLabel : '',
-                        PHP_EOL
-                    );
+                        $filterLabel ? 'which match filters ' .  $filterLabel : ''
+                    ));
 
                     if ($items->exists()) {
-                        $this->indexItems($indexName, $items);
+                        $this->indexItems($indexName, $items, $output);
                     }
                 }
             }
         }
 
-
-        echo 'Done' . PHP_EOL;
+        return Command::SUCCESS;
     }
 
+    public function getOptions(): array
+    {
+        return [
+            new InputOption('only', null, InputOption::VALUE_OPTIONAL, 'Only index objects of this class'),
+            new InputOption('filter', null, InputOption::VALUE_OPTIONAL, 'Filter to apply when fetching objects'),
+            new InputOption('force', null, InputOption::VALUE_NONE, 'Force indexing of all objects'),
+            new InputOption('subsite', null, InputOption::VALUE_OPTIONAL, 'Only index objects from this subsite'),
+            new InputOption('clear', null, InputOption::VALUE_NONE, 'Clear all indexes before reindexing'),
+        ];
+    }
 
     /**
      * @param string $targetClass
@@ -187,11 +199,11 @@ class AlgoliaReindex extends BuildTask
     /**
      * @param string $indexName
      * @param DataList? $items
-     * @param bool $output;
+     * @param PolyOutput $output;
      *
      * @return bool|string
      */
-    public function indexItems($indexName, $items = null, $output = true)
+    public function indexItems($indexName, $items, PolyOutput $output)
     {
         $algoliaService = Injector::inst()->get(AlgoliaService::class);
         $count = 0;
@@ -215,10 +227,10 @@ class AlgoliaReindex extends BuildTask
                 $pos++;
 
                 if ($output) {
-                    echo '.';
-
                     if ($pos % 50 == 0) {
-                        echo sprintf(' [%s/%s]%s', $pos, $total, PHP_EOL);
+                        $output->writeln(sprintf('[%s/%s]', $pos, $total));
+                    } else {
+                        $output->write('.');
                     }
                 }
 
@@ -279,7 +291,7 @@ class AlgoliaReindex extends BuildTask
         }
 
         $summary = sprintf(
-            "%s| Number of objects indexed in %s: %s, Skipped %s",
+            "%sNumber of objects indexed in %s: %s, Skipped %s",
             PHP_EOL,
             $indexName,
             $count,
@@ -287,17 +299,14 @@ class AlgoliaReindex extends BuildTask
         );
 
         if ($output) {
-            echo $summary;
+            $output->writeln($summary);
 
-            echo sprintf(
-                "%s| See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>" .
-                    "algolia.com/apps/%s/explorer/indices</a>%s---%s",
-                PHP_EOL,
+            $output->writeln(sprintf(
+                "See index at <a href='https://www.algolia.com/apps/%s/explorer/indices' target='_blank'>" .
+                    "algolia.com/apps/%s/explorer/indices</a>",
                 $algoliaService->applicationId,
-                $algoliaService->applicationId,
-                PHP_EOL,
-                PHP_EOL
-            );
+                $algoliaService->applicationId
+            ));
         }
 
         return $summary;
