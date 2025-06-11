@@ -54,9 +54,11 @@ class AlgoliaQuerier
         }
 
         $records = ArrayList::create();
-        $totalItems = $results['nbHits'] ?? 0;
+        $totalItems = 0;
 
         if ($results && isset($results['hits'])) {
+            $totalItems = isset($results['nbHits']) ? $results['nbHits'] : 0;
+
             foreach ($results['hits'] as $hit) {
                 $className = isset($hit['objectClassName']) ? $hit['objectClassName'] : null;
                 $id = isset($hit['objectSilverstripeID']) ? $hit['objectSilverstripeID'] : null;
