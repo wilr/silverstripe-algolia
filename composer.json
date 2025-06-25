@@ -34,8 +34,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Wilr\\Silverstripe\\Algolia\\": "src/",
-            "Wilr\\Silverstripe\\Algolia\\Tests\\": "tests/"
+            "Wilr\\SilverStripe\\Algolia\\": "src/",
+            "Wilr\\SilverStripe\\Algolia\\Tests\\": "tests/"
         }
     },
     "prefer-stable": true,
