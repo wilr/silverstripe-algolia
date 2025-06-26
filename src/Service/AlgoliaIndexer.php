@@ -9,14 +9,15 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Configurable;
-use SilverStripe\ORM\ArrayList;
+use SilverStripe\Model\List\Map;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBBoolean;
 use SilverStripe\ORM\FieldType\DBDate;
 use SilverStripe\ORM\FieldType\DBDatetime;
 use SilverStripe\ORM\FieldType\DBForeignKey;
 use SilverStripe\ORM\FieldType\DBHTMLText;
-use SilverStripe\ORM\Map;
 use SilverStripe\ORM\RelationList;
 use Throwable;
 
@@ -34,12 +35,12 @@ class AlgoliaIndexer
      *
      * @config
      */
-    private static $include_page_content = true;
+    private static bool $include_page_content = true;
 
     /**
      * @config
      */
-    private static $attributes_blacklisted = [
+    private static array $attributes_blacklisted = [
         'ID',
         'Title',
         'ClassName',
@@ -50,7 +51,7 @@ class AlgoliaIndexer
     /**
      * @config
      */
-    private static $max_field_size_bytes = 10000;
+    private static int $max_field_size_bytes = 10000;
 
     /**
      * Add the provided item to the Algolia index.
@@ -63,7 +64,7 @@ class AlgoliaIndexer
      *
      * @return boolean
      */
-    public function indexItem($item)
+    public function indexItem(DataObject $item): bool
     {
         $searchIndexes = $this->getService()->initIndexes($item);
 
@@ -88,7 +89,6 @@ class AlgoliaIndexer
 
                 if (!$result->valid()) {
                     $output = false;
-                } else {
                 }
             }
 
@@ -98,24 +98,19 @@ class AlgoliaIndexer
         return false;
     }
 
-    /**
-     * @return AlgoliaService
-     */
-    public function getService()
+
+    public function getService(): AlgoliaService
     {
         return Injector::inst()->get(AlgoliaService::class);
     }
 
     /**
      * Index multiple items of the same class at a time.
-     *
-     * @param DataObject[] $items
-     *
-     * @return $this
      */
-    public function indexItems($items)
+    public function indexItems(DataList $items): self
     {
-        $searchIndexes = $this->getService()->initIndexes($items->first());
+        $sample = $items->first();
+        $searchIndexes = $this->getService()->initIndexes($sample);
         $data = [];
 
         foreach ($items as $item) {
@@ -161,10 +156,8 @@ class AlgoliaIndexer
      * ```
      *
      * @param DataObject
-     *
-     * @return SilverStripe\ORM\Map
      */
-    public function exportAttributesFromObject($item)
+    public function exportAttributesFromObject($item): Map
     {
         $toIndex = [
             'objectID' => $item->AlgoliaUUID,
@@ -304,13 +297,9 @@ class AlgoliaIndexer
 
     /**
      * Retrieve all the attributes from the related object that we want to add
-     * to this record. As the related record may not have the
-     *
-     * @param DataObject            $item
-     * @param string                $relationship
-     * @param \SilverStripe\ORM\Map $attributes
+     * to this record.
      */
-    public function exportAttributesFromRelationship($item, $relationship, $attributes)
+    public function exportAttributesFromRelationship(DataObject $item, string $relationship, Map $attributes): void
     {
         try {
             $data = [];
@@ -404,7 +393,7 @@ class AlgoliaIndexer
         if (!$item->AlgoliaUUID) {
             return [];
         }
-        
+
         foreach ($indexes as $index) {
             try {
                 $output = $index->getObject($item->AlgoliaUUID);

@@ -76,5 +76,4 @@ class AlgoliaIndexerTest extends SapphireTest
 
         return $this->assertTrue($deleted);
     }
-
 }

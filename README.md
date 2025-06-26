@@ -196,8 +196,8 @@ receives the default index fields and then allows you to add or remove fields as
 required
 
 ```php
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\Map;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\List\Map;
 
 class MyPage extends Page {
 

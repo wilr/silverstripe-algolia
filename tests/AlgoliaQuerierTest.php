@@ -4,9 +4,8 @@ namespace Wilr\SilverStripe\Algolia\Tests;
 
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\SapphireTest;
+use SilverStripe\Model\List\PaginatedList;
 use SilverStripe\ORM\DataObjectSchema;
-use SilverStripe\ORM\PaginatedList;
-use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaQuerier;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 use Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension;

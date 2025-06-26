@@ -103,5 +103,4 @@ class AlgoliaServiceTest extends SapphireTest
         $this->assertEquals(['testIndexTestObjects'], array_keys($service->initIndexes($testObj)));
         $this->assertEquals(['testIndexTestObjectsNamedTed'], array_keys($service->initIndexes($testObj2)));
     }
-
 }

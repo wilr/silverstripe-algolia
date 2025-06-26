@@ -135,7 +135,7 @@ class AlgoliaPageCrawler
 
     /**
      * Process page DOM content
-     * 
+     *
      * @param string $content DOM node content
      */
     private function processMainContent($content): string

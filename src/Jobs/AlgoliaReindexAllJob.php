@@ -151,7 +151,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
                 if ($item) {
                     if (min($item->invokeWithExtensions('canIndexInAlgolia')) === false) {
                         $this->addMessage('Skipped indexing ' . $class . ' ' . $item->ID);
-                    } else if ($task->indexItem($item)) {
+                    } elseif ($task->indexItem($item)) {
                         $this->addMessage('Successfully indexed ' . $class . ' ' . $item->ID);
                     } else {
                         $this->addMessage('Error indexing ' . $class . ' ' . $item->ID);

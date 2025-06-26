@@ -4,8 +4,8 @@ namespace Wilr\SilverStripe\Algolia\Service;
 
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\ArrayList;
-use SilverStripe\ORM\PaginatedList;
+use SilverStripe\Model\List\ArrayList;
+use SilverStripe\Model\List\PaginatedList;
 use Throwable;
 
 /**
