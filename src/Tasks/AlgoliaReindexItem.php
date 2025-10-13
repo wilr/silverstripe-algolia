@@ -14,7 +14,7 @@ use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
 class AlgoliaReindexItem extends BuildTask
 {
-    protected static string $commandName = 'algolia:index-item';
+    protected static string $commandName = 'algolia-index-item';
 
     protected string $title = 'Algolia Reindex Item';
 

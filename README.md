@@ -139,8 +139,8 @@ import existing data. This will batch import all the records from your database
 into the indexes configured above.
 
 ```sh
-./vendor/bin/sake algolia:configure
-./vendor/bin/sake algolia:index
+./vendor/bin/sake algolia-configure
+./vendor/bin/sake algolia-index
 ```
 
 Individually records will be indexed automatically going forward via the
@@ -154,7 +154,7 @@ indexing. For instance, if you have a large amount of JobVacancies to bulk
 import but only need the active ones you can trigger the task as follows:
 
 ```sh
-/vendor/bin/sake algolia:index --onlyClass="onlyClass=Vacancy" --filter="ExpiryDate>NOW()"
+/vendor/bin/sake algolia-index --onlyClass="onlyClass=Vacancy" --filter="ExpiryDate>NOW()"
 ```
 
 If you do not have access to a CLI (i.e Silverstripe Cloud) then you can also
@@ -165,13 +165,13 @@ bulk reindex via a queued job `AlgoliaReindexAllJob`.
 `force` forces every Silverstripe record to be re-synced.
 
 ```sh
-./vendor/bin/sake algolia:index --force
+./vendor/bin/sake algolia-index --force
 ```
 
 `clear` truncates the search index before re-indexing.
 
 ```sh
-./vendor/bin/sake algolia:index --clear
+./vendor/bin/sake algolia-index --clear
 ```
 
 ### Customising the indexed attributes (fields)

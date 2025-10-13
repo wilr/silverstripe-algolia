@@ -21,7 +21,7 @@ class AlgoliaConfigure extends BuildTask
 
     protected static string $description = 'Sync Algolia index configuration';
 
-    protected static string $commandName = 'algolia:configure';
+    protected static string $commandName = 'algolia-configure';
 
     protected function execute(InputInterface $input, PolyOutput $output): int
     {

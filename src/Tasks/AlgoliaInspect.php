@@ -15,7 +15,7 @@ class AlgoliaInspect extends BuildTask
 
     protected static string $description = 'Inspect Algolia index configuration';
 
-    protected static string $commandName = 'algolia:inspect';
+    protected static string $commandName = 'algolia-inspect';
 
     protected function execute(InputInterface $input, PolyOutput $output): int
     {
