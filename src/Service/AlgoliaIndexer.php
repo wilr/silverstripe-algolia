@@ -254,6 +254,9 @@ class AlgoliaIndexer
                     $hasContent = true;
 
                     switch (get_class($dbField)) {
+                        case ArrayList::class:
+                            $hasContent = false;
+                            break;
                         case DBDate::class:
                         case DBDatetime::class:
                             $value = $dbField->getTimestamp();
@@ -289,7 +292,11 @@ class AlgoliaIndexer
                             }
                             break;
                         default:
-                            $value = @$dbField->forTemplate();
+                            if (method_exists($dbField, 'forTemplate')) {
+                                $value = $dbField->forTemplate();
+                            } else {
+                                $hasContent = false;
+                            }
                     }
 
                     if ($hasContent) {
@@ -404,7 +411,7 @@ class AlgoliaIndexer
         if (!$item->AlgoliaUUID) {
             return [];
         }
-        
+
         foreach ($indexes as $index) {
             try {
                 $output = $index->getObject($item->AlgoliaUUID);
