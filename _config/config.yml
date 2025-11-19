@@ -2,6 +2,8 @@
 Name: silverstripe-algolia
 ---
 SilverStripe\CMS\Model\SiteTree:
+  field_to_reindex_children: "URLSegment"
+  children_method_for_index: "AllChildren"
   extensions:
     - Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension
 SilverStripe\Subsites\Pages\SubsitesVirtualPage:
