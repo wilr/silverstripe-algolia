@@ -104,18 +104,53 @@ class AlgoliaObjectExtension extends DataExtension
      * When publishing the page, push this data to Algolia Indexer. The data
      * which is sent to Algolia is the rendered template from the front end.
      */
-    public function onAfterPublish()
+    public function onAfterPublish(&$original)
     {
         if (min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
             $this->owner->removeFromAlgolia();
         } else {
             // check to see if the classname changed, if it has then it might
             // need to be removed from other indexes before being re-added
-            if ($this->owner->isChanged('ClassName')) {
-                $this->owner->removeFromAlgolia();
+            if ($original && $this->owner->ClassName !== $original->ClassName) {
+                $this->owner->removeFromAlgolia(false);
             }
 
-            $this->owner->indexInAlgolia();
+            // Allow updating children of this record when a field is changed
+            // E.g. if SiteTree::URLSegment is changed, then we need to reindex the "AllChildren" of the page
+            $updateChildrenField = $this->owner->config()->get('field_to_reindex_children');
+
+            if (
+                $updateChildrenField &&
+                $this->owner->hasField($updateChildrenField) &&
+                $original &&
+                $original->hasField($updateChildrenField) &&
+                $this->owner->$updateChildrenField !== $original->$updateChildrenField
+            ) {
+                $this->owner->invokeWithExtensions('recursiveIndexInAlgolia');
+            } else {
+                $this->owner->indexInAlgolia();
+            }
+        }
+    }
+
+    public function recursiveIndexInAlgolia()
+    {
+        if (!$this->owner->isPublished()) {
+            return;
+        }
+        $this->indexInAlgolia();
+        $childrenMethod = $this->owner->config()->get('children_method_for_index');
+
+        if (
+            $childrenMethod &&
+            $this->owner->hasMethod($childrenMethod) &&
+            ($children = $this->owner->$childrenMethod())
+        ) {
+            foreach ($children as $child) {
+                if ($child->isPublished()) {
+                    $child->invokeWithExtensions('recursiveIndexInAlgolia');
+                }
+            }
         }
     }
 
@@ -261,13 +296,31 @@ class AlgoliaObjectExtension extends DataExtension
     /**
      * Remove this item from Algolia
      *
+     * @param bool $removeChildren Whether to remove children of this record from Algolia
      * @return boolean
      */
-    public function removeFromAlgolia(): bool
+    public function removeFromAlgolia($removeChildren = true): bool
     {
         if (!$this->owner->AlgoliaUUID) {
             // Not in the index, so skipping
             return false;
+        }
+
+
+        // Remove children of this record from Algolia, if configured to do so
+        $childrenMethod = $this->owner->config()->get('children_method_for_index');
+
+        if (
+            $removeChildren &&
+            $childrenMethod &&
+            $this->owner->hasMethod($childrenMethod) &&
+            ($children = $this->owner->$childrenMethod())
+        ) {
+            foreach ($children as $child) {
+                if ($child->hasMethod('removeFromAlgolia')) {
+                    $child->removeFromAlgolia();
+                }
+            }
         }
 
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
