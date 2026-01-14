@@ -269,7 +269,7 @@ class AlgoliaService
                         if (isset($data['indexSettings']['replicas'])) {
                             $data['indexSettings']['replicas'] = array_map(
                                 function ($replica) {
-                                    return Director::get_environment_type() . '_' . $replica;
+                                    return $this->environmentizeIndex($replica);
                                 },
                                 $data['indexSettings']['replicas']
                             );
