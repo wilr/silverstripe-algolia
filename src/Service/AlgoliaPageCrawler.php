@@ -124,7 +124,9 @@ class AlgoliaPageCrawler
         Requirements::restore();
         Config::unnest();
 
-        Versioned::set_stage($originalStage);
+        if ($originalStage) {
+            Versioned::set_stage($originalStage);
+        }
 
         if ($this->config()->get('content_cutoff_bytes')) {
             $output = mb_strcut($output, 0, $this->config()->get('content_cutoff_bytes') - 1);
