@@ -235,7 +235,7 @@ class AlgoliaReindex extends BuildTask
                 }
 
                 // fetch the actual instance
-                $instance = DataObject::get_by_id($item->ClassName, $item->ID);
+                $instance = DataObject::get($item->ClassName)->setUseCache(true)->byID($item->ID);
 
                 if (!$instance || min($instance->invokeWithExtensions('canIndexInAlgolia')) == false) {
                     $skipped++;
