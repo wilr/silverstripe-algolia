@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Service;
 
+use DOMNode;
 use DOMXPath;
 use Masterminds\HTML5;
 use Psr\Log\LoggerInterface;
@@ -27,6 +28,50 @@ use Throwable;
 class AlgoliaPageCrawler
 {
     use Configurable;
+
+    /**
+     * DOM elements that should create a separator after their content
+     * to avoid words being concatenated when HTML is minified.
+     */
+    private const CONTENT_SEPARATOR_TAGS = [
+        'address',
+        'article',
+        'aside',
+        'blockquote',
+        'br',
+        'dd',
+        'div',
+        'dl',
+        'dt',
+        'fieldset',
+        'figcaption',
+        'figure',
+        'footer',
+        'form',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'header',
+        'hr',
+        'li',
+        'main',
+        'nav',
+        'ol',
+        'p',
+        'pre',
+        'section',
+        'table',
+        'tbody',
+        'td',
+        'tfoot',
+        'th',
+        'thead',
+        'tr',
+        'ul'
+    ];
 
     private $item;
 
@@ -113,7 +158,7 @@ class AlgoliaPageCrawler
                 }
 
                 if (isset($nodes[0])) {
-                    $output = $this->processMainContent($nodes[0]->nodeValue);
+                    $output = $this->processMainContent($this->extractNodeText($nodes[0]));
                 }
             }
         } catch (Throwable $e) {
@@ -155,5 +200,46 @@ class AlgoliaPageCrawler
         }
 
         return $content;
+    }
+
+    private function extractNodeText(DOMNode $node): string
+    {
+        if ($this->shouldSkipNode($node)) {
+            return '';
+        }
+
+        if ($node->nodeType === XML_TEXT_NODE || $node->nodeType === XML_CDATA_SECTION_NODE) {
+            return $node->nodeValue ?? '';
+        }
+
+        if (!$node->hasChildNodes()) {
+            return '';
+        }
+
+        $output = '';
+
+        foreach ($node->childNodes as $childNode) {
+            $output .= $this->extractNodeText($childNode);
+
+            if ($childNode->nodeType === XML_ELEMENT_NODE && $this->needsSeparator($childNode)) {
+                $output .= ' ';
+            }
+        }
+
+        return $output;
+    }
+
+    private function shouldSkipNode(DOMNode $node): bool
+    {
+        if ($node->nodeType !== XML_ELEMENT_NODE) {
+            return false;
+        }
+
+        return in_array(strtolower($node->nodeName), ['script', 'style', 'template', 'noscript'], true);
+    }
+
+    private function needsSeparator(DOMNode $node): bool
+    {
+        return in_array(strtolower($node->nodeName), self::CONTENT_SEPARATOR_TAGS, true);
     }
 }

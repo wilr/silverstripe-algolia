@@ -26,23 +26,19 @@ class AlgoliaObjectExtension extends Extension
     /**
      * @var boolean
      */
-    private $ranSync = false;
+    private bool $ranSync = false;
 
     /**
      * @config
-     *
-     * @var boolean
      */
-    private static $enable_indexer = true;
+    private static bool $enable_indexer = true;
 
     /**
      * @config
-     *
-     * @var boolean
      */
-    private static $use_queued_indexing = false;
+    private static bool $use_queued_indexing = false;
 
-    private static $db = [
+    private static array $db = [
         'AlgoliaIndexed' => 'Datetime',
         'AlgoliaError' => 'Varchar(200)',
         'AlgoliaUUID' => 'Varchar(200)'
