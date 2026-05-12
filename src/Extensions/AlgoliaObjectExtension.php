@@ -19,14 +19,12 @@ use Wilr\Silverstripe\Algolia\Jobs\AlgoliaDeleteItemJob;
 use Wilr\Silverstripe\Algolia\Jobs\AlgoliaIndexItemJob;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
+/**
+ * @extends Extension<DataObject>
+ */
 class AlgoliaObjectExtension extends Extension
 {
     use Configurable;
-
-    /**
-     * @var boolean
-     */
-    private bool $ranSync = false;
 
     /**
      * @config
@@ -54,10 +52,7 @@ class AlgoliaObjectExtension extends Extension
 
 
 
-    /**
-     * @param FieldList
-     */
-    public function updateCMSFields(FieldList $fields)
+    public function updateCMSFields(FieldList $fields): void
     {
         $fields->removeByName('AlgoliaIndexed');
         $fields->removeByName('AlgoliaUUID');
@@ -65,12 +60,9 @@ class AlgoliaObjectExtension extends Extension
     }
 
 
-    /**
-     * @param FieldList
-     */
-    public function updateSettingsFields(FieldList $fields)
+    public function updateSettingsFields(FieldList $fields): void
     {
-        if ($this->owner->indexEnabled()) {
+        if ($this->indexEnabled()) {
             $fields->addFieldsToTab(
                 'Root.Search',
                 [
@@ -98,25 +90,22 @@ class AlgoliaObjectExtension extends Extension
      * When publishing the page, push this data to Algolia Indexer. The data
      * which is sent to Algolia is the rendered template from the front end.
      */
-    public function onAfterPublish()
+    public function onAfterPublish(): void
     {
-        if (min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
-            $this->owner->removeFromAlgolia();
+        if (self::shouldBlockIndexingForAlgolia($this->owner)) {
+            $this->removeFromAlgolia();
         } else {
             // check to see if the classname changed, if it has then it might
             // need to be removed from other indexes before being re-added
             if ($this->owner->isChanged('ClassName')) {
-                $this->owner->removeFromAlgolia();
+                $this->removeFromAlgolia();
             }
 
-            $this->owner->indexInAlgolia();
+            $this->indexInAlgolia();
         }
     }
 
-    /**
-     *
-     */
-    public function markAsRemovedFromAlgoliaIndex()
+    public function markAsRemovedFromAlgoliaIndex(): DataObject
     {
         $this->touchAlgoliaIndexedDate(true);
 
@@ -126,9 +115,10 @@ class AlgoliaObjectExtension extends Extension
     /**
      * Update the AlgoliaIndexed date for this object.
      */
-    public function touchAlgoliaIndexedDate($isDeleted = false)
+    public function touchAlgoliaIndexedDate(bool $isDeleted = false): DataObject
     {
-        $newValue = $isDeleted ? 'null' : DB::get_conn()->now();
+        $conn = DB::get_conn();
+        $newValue = $isDeleted || $conn === null ? 'null' : $conn->now();
 
         $this->updateAlgoliaFields([
             'AlgoliaIndexed' => $newValue,
@@ -140,8 +130,10 @@ class AlgoliaObjectExtension extends Extension
 
     /**
      * Update search metadata without triggering draft state etc
+     *
+     * @param array<string, string> $fields
      */
-    private function updateAlgoliaFields($fields)
+    private function updateAlgoliaFields(array $fields): void
     {
         $schema = DataObject::getSchema();
         $table = $schema->tableForField($this->owner->ClassName, 'AlgoliaIndexed');
@@ -178,7 +170,7 @@ class AlgoliaObjectExtension extends Extension
      */
     public function indexInAlgolia(): bool
     {
-        if ($this->owner->indexEnabled() && min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
+        if ($this->indexEnabled() && self::shouldBlockIndexingForAlgolia($this->owner)) {
             return false;
         }
 
@@ -199,7 +191,7 @@ class AlgoliaObjectExtension extends Extension
      */
     public function doImmediateIndexInAlgolia(): bool
     {
-        if ($this->owner->indexEnabled() && min($this->owner->invokeWithExtensions('canIndexInAlgolia')) == false) {
+        if ($this->indexEnabled() && self::shouldBlockIndexingForAlgolia($this->owner)) {
             return false;
         }
 
@@ -245,9 +237,9 @@ class AlgoliaObjectExtension extends Extension
     /**
      * When unpublishing this item, remove from Algolia
      */
-    public function onAfterUnpublish()
+    public function onAfterUnpublish(): void
     {
-        if ($this->owner->indexEnabled()) {
+        if ($this->indexEnabled()) {
             $this->removeFromAlgolia();
         }
     }
@@ -285,14 +277,14 @@ class AlgoliaObjectExtension extends Extension
         return true;
     }
 
-    public function onBeforeWrite()
+    public function onBeforeWrite(): void
     {
         if (!$this->owner->AlgoliaUUID) {
-            $this->owner->assignAlgoliaUUID(false);
+            $this->assignAlgoliaUUID(false);
         }
     }
 
-    public function assignAlgoliaUUID($writeImmediately = true)
+    public function assignAlgoliaUUID(bool $writeImmediately = true): void
     {
         $uuid = Uuid::uuid4();
         $value = $uuid->toString();
@@ -307,9 +299,9 @@ class AlgoliaObjectExtension extends Extension
     /**
      * Before deleting this record ensure that it is removed from Algolia.
      */
-    public function onBeforeDelete()
+    public function onBeforeDelete(): void
     {
-        if ($this->owner->indexEnabled()) {
+        if ($this->indexEnabled()) {
             $this->removeFromAlgolia();
         }
     }
@@ -317,20 +309,64 @@ class AlgoliaObjectExtension extends Extension
     /**
      * Ensure each record has unique UUID
      */
-    public function onBeforeDuplicate()
+    public function onBeforeDuplicate(): void
     {
-        $this->owner->assignAlgoliaUUID(false);
+        $this->assignAlgoliaUUID(false);
         $this->owner->AlgoliaIndexed = null;
         $this->owner->AlgoliaError = null;
     }
 
     /**
-     * @return array
+     * @return array<string, \Algolia\AlgoliaSearch\SearchIndex>
      */
-    public function getAlgoliaIndexes()
+    public function getAlgoliaIndexes(): array
     {
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
 
         return $indexer->getService()->initIndexes($this->owner);
+    }
+
+    /**
+     * True when aggregated extension hooks for {@see canIndexInAlgolia()} veto indexing for this owner.
+     */
+    public static function shouldBlockIndexingForAlgolia(DataObject $owner): bool
+    {
+        $flags = $owner->invokeWithExtensions('canIndexInAlgolia');
+
+        if ($flags === []) {
+            return false;
+        }
+
+        return min($flags) === false;
+    }
+
+    /**
+     * Runs {@see assignAlgoliaUUID()} with a correctly scoped extension instance (for code paths where the
+     * owner is typed as generic {@see DataObject}).
+     */
+    public static function runAssignAlgoliaUuid(DataObject $owner, bool $writeImmediately = true): void
+    {
+        $extension = Injector::inst()->create(static::class);
+        $extension->withOwner($owner, static function () use ($extension, $writeImmediately): void {
+            $extension->assignAlgoliaUUID($writeImmediately);
+        });
+    }
+
+    /**
+     * Runs {@see doImmediateIndexInAlgolia()} with a correctly scoped extension instance.
+     */
+    public static function runDoImmediateIndexInAlgolia(DataObject $owner): bool
+    {
+        $extension = Injector::inst()->create(static::class);
+
+        return $extension->withOwner($owner, static fn (): bool => $extension->doImmediateIndexInAlgolia());
+    }
+
+    public static function runTouchAlgoliaIndexedDate(DataObject $owner): void
+    {
+        $extension = Injector::inst()->create(static::class);
+        $extension->withOwner($owner, static function () use ($extension): void {
+            $extension->touchAlgoliaIndexedDate();
+        });
     }
 }

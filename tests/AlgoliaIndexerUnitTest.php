@@ -21,13 +21,6 @@ class AlgoliaIndexerUnitTest extends TestCase
     {
         $indexer = new AlgoliaIndexer();
 
-        $this->assertFalse($indexer->deleteItem('SomeClass', null));
-        $this->assertFalse($indexer->deleteItem('SomeClass', 0));
         $this->assertFalse($indexer->deleteItem('SomeClass', ''));
     }
-}
-
-class FakeIndexerRecord
-{
-    public int $ID = 0;
 }

@@ -7,8 +7,17 @@ use SilverStripe\Dev\TestOnly;
 
 class TestAlgoliaServiceClient extends SearchClient implements TestOnly
 {
+    /**
+     * @var array<string, TestAlgoliaServiceIndex>
+     */
+    private static array $indexesByName = [];
+
     public function initIndex($name)
     {
-        return new TestAlgoliaServiceIndex($name, $this->api, $this->config);
+        if (!isset(self::$indexesByName[$name])) {
+            self::$indexesByName[$name] = new TestAlgoliaServiceIndex($name, $this->api, $this->config);
+        }
+
+        return self::$indexesByName[$name];
     }
 }

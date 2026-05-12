@@ -7,10 +7,14 @@ use SilverStripe\Dev\BuildTask;
 use SilverStripe\PolyExecution\PolyOutput;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
+use Wilr\SilverStripe\Algolia\Tasks\Concerns\UsesAlgoliaQuietOption;
 
 class AlgoliaInspect extends BuildTask
 {
+    use UsesAlgoliaQuietOption;
+
     protected string $title = 'Algolia Inspect';
 
     protected static string $description = 'Inspect Algolia index configuration';
@@ -19,11 +23,13 @@ class AlgoliaInspect extends BuildTask
 
     protected function execute(InputInterface $input, PolyOutput $output): int
     {
+        $this->applyQuietFromInput($input, $output);
+
         $itemClass = $input->getOption('class');
         $itemId = $input->getOption('id');
 
         if (!$itemClass || !$itemId) {
-            $output->writeln('Missing class or id parameters');
+            $this->writelnError($output, 'Missing class or id parameters');
 
             return Command::FAILURE;
         }
@@ -31,7 +37,8 @@ class AlgoliaInspect extends BuildTask
         $item = $itemClass::get()->byId($itemId);
 
         if (!$item || !$item->canView()) {
-            $output->writeln('Missing or unviewable object ' . $itemClass . ' #' . $itemId);
+            $this->writelnError($output, 'Missing or unviewable object ' . $itemClass . ' #' . $itemId);
+
             return Command::FAILURE;
         }
 
@@ -56,5 +63,14 @@ class AlgoliaInspect extends BuildTask
         $output->writeln('Algolia UUID: ' . $item->AlgoliaUUID);
 
         return Command::SUCCESS;
+    }
+
+    public function getOptions(): array
+    {
+        return [
+            new InputOption('class', null, InputOption::VALUE_OPTIONAL, 'Fully qualified DataObject class name'),
+            new InputOption('id', null, InputOption::VALUE_OPTIONAL, 'Record ID'),
+            $this->algoliaQuietInputOption(),
+        ];
     }
 }

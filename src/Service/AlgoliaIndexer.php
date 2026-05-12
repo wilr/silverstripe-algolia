@@ -76,9 +76,7 @@ class AlgoliaIndexer
             return false;
         }
 
-        if (method_exists($fields, 'toArray')) {
-            $fields = $fields->toArray();
-        }
+        $fields = $fields->toArray();
 
         if ($searchIndexes) {
             $output = true;
@@ -106,6 +104,8 @@ class AlgoliaIndexer
 
     /**
      * Index multiple items of the same class at a time.
+     *
+     * @param DataList<DataObject> $items
      */
     public function indexItems(DataList $items): self
     {
@@ -155,9 +155,8 @@ class AlgoliaIndexer
      * }
      * ```
      *
-     * @param DataObject
      */
-    public function exportAttributesFromObject($item): Map
+    public function exportAttributesFromObject(DataObject $item): Map
     {
         $toIndex = [
             'objectID' => $item->AlgoliaUUID,
@@ -165,26 +164,24 @@ class AlgoliaIndexer
             'objectIndexedTimestamp' => date('c'),
             'objectTitle' => (string) $item->Title,
             'objectClassName' => get_class($item),
-            'objectClassNameHierarchy' => array_values(ClassInfo::ancestry(get_class($item))),
-            'objectLastEdited' => $item->dbObject('LastEdited')->getTimestamp(),
-            'objectCreated' => $item->dbObject('Created')->getTimestamp()
+            'objectClassNameHierarchy' => array_values(ClassInfo::ancestry($item)),
+            'objectLastEdited' => (($lf = $item->dbObject('LastEdited')) instanceof DBDate) ? $lf->getTimestamp() : 0,
+            'objectCreated' => (($cf = $item->dbObject('Created')) instanceof DBDate) ? $cf->getTimestamp() : 0
         ];
 
-        if ($item->hasMethod('AbsoluteLink') && !empty($item->AbsoluteLink())) {
-            $link = $item->AbsoluteLink();
+        $objectLinkPayload = '';
 
-            if (!empty($link)) {
-                $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $link);
-            }
-        } elseif ($item->hasMethod('Link') && !empty($item->Link())) {
-            $link = $item->Link();
-
-            if (!empty($link)) {
-                $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $link);
-            }
+        if ($item->hasMethod('AbsoluteLink')) {
+            $objectLinkPayload = trim((string) $item->AbsoluteLink());
+        } elseif ($item->hasMethod('Link')) {
+            $objectLinkPayload = trim((string) $item->Link());
         }
 
-        if ($item && $item->hasMethod('exportObjectToAlgolia')) {
+        if ($objectLinkPayload !== '') {
+            $toIndex['objectLink'] = str_replace(['?stage=Stage', '?stage=Live'], '', $objectLinkPayload);
+        }
+
+        if ($item->hasMethod('exportObjectToAlgolia')) {
             return $item->exportObjectToAlgolia($toIndex);
         }
 
@@ -201,10 +198,22 @@ class AlgoliaIndexer
             $attributes->push($k, $v);
         }
 
-        $specs = $item->config()->get('algolia_index_fields');
+        $specsRaw = $item->config()->get('algolia_index_fields');
 
-        if ($specs) {
-            $attributes = $this->addSpecsToAttributes($item, $attributes, $specs);
+        $specStrings = [];
+
+        if (is_iterable($specsRaw)) {
+            foreach ($specsRaw as $fieldSpec) {
+                if (!is_scalar($fieldSpec)) {
+                    continue;
+                }
+
+                $specStrings[] = (string) $fieldSpec;
+            }
+        }
+
+        if ($specStrings !== []) {
+            $attributes = $this->addSpecsToAttributes($item, $attributes, $specStrings);
         }
 
         $item->invokeWithExtensions('updateAlgoliaAttributes', $attributes);
@@ -213,7 +222,11 @@ class AlgoliaIndexer
     }
 
 
-    public function addSpecsToAttributes($item, $attributes, $specs)
+
+    /**
+     * @param array<int, string> $specs
+     */
+    public function addSpecsToAttributes(DataObject $item, Map $attributes, array $specs): Map
     {
         $maxFieldSize = $this->config()->get('max_field_size_bytes');
 
@@ -245,6 +258,7 @@ class AlgoliaIndexer
                 } else {
                     // db-field, if it's a date then use the timestamp since we need it
                     $hasContent = true;
+                    $value = '';
 
                     switch (get_class($dbField)) {
                         case DBDate::class:
@@ -277,12 +291,14 @@ class AlgoliaIndexer
 
                                     $i++;
                                 }
+                                $hasContent = false;
                             } else {
                                 $value = $fieldData;
                             }
                             break;
                         default:
-                            $value = @$dbField->forTemplate();
+                            $value = (string) $dbField->forTemplate();
+                            break;
                     }
 
                     if ($hasContent) {
@@ -344,10 +360,9 @@ class AlgoliaIndexer
      * Remove an item ID from the index. As this would usually be when an object
      * is deleted in Silverstripe we cannot rely on the object existing.
      *
-     * @param string $itemClass
-     * @param int $itemUUID
+     * @param string $itemUUID
      */
-    public function deleteItem($itemClass, $itemUUID)
+    public function deleteItem(string $itemClass, string $itemUUID): bool
     {
         if (!$itemUUID) {
             return false;
@@ -382,11 +397,9 @@ class AlgoliaIndexer
     }
 
     /**
-     * @param DataObject $item
-     *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function getObject($item)
+    public function getObject(DataObject $item): array
     {
         $indexes = $this->getService()->initIndexes($item);
 

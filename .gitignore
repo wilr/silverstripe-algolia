@@ -6,3 +6,5 @@ composer.lock
 /public
 /.env
 /.phpunit.result.cache
+/app
+/coverage

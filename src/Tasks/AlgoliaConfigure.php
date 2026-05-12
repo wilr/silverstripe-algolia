@@ -7,7 +7,9 @@ use SilverStripe\Dev\BuildTask;
 use SilverStripe\PolyExecution\PolyOutput;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
+use Wilr\SilverStripe\Algolia\Tasks\Concerns\UsesAlgoliaQuietOption;
 
 /**
  * Syncs index settings to Algolia.
@@ -17,6 +19,8 @@ use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
  */
 class AlgoliaConfigure extends BuildTask
 {
+    use UsesAlgoliaQuietOption;
+
     protected string $title = 'Algolia Configure';
 
     protected static string $description = 'Sync Algolia index configuration';
@@ -25,10 +29,12 @@ class AlgoliaConfigure extends BuildTask
 
     protected function execute(InputInterface $input, PolyOutput $output): int
     {
+        $this->applyQuietFromInput($input, $output);
+
         $service = Injector::inst()->get(AlgoliaService::class);
 
         if (!$this->isEnabled()) {
-            $output->writeln('This task is disabled.');
+            $this->writelnError($output, 'This task is disabled.');
             return Command::FAILURE;
         }
 
@@ -39,12 +45,19 @@ class AlgoliaConfigure extends BuildTask
                 return Command::SUCCESS;
             }
 
-            $output->writeln('An error occurred while syncing the settings. Please check your error logs.');
+            $this->writelnError($output, 'An error occurred while syncing the settings. Please check your error logs.');
         } catch (\Exception $e) {
-            $output->writeln('An error occurred while syncing the settings. Please check your error logs.');
-            $output->writeln('Error: ' . $e->getMessage());
+            $this->writelnError($output, 'An error occurred while syncing the settings. Please check your error logs.');
+            $this->writelnError($output, 'Error: ' . $e->getMessage());
         }
 
         return Command::FAILURE;
+    }
+
+    public function getOptions(): array
+    {
+        return [
+            $this->algoliaQuietInputOption(),
+        ];
     }
 }

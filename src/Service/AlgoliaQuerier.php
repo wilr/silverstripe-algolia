@@ -6,6 +6,7 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Model\List\ArrayList;
 use SilverStripe\Model\List\PaginatedList;
+use SilverStripe\ORM\DataObject;
 use Throwable;
 
 /**
@@ -14,40 +15,38 @@ use Throwable;
 class AlgoliaQuerier
 {
     /**
-     * @var array|null $lastResult
+     * Raw Algolia SDK response payload from the previous query, when available.
+     *
+     * @var array<string, mixed>|null
      */
-    protected $lastResult = null;
+    protected ?array $lastResult = null;
 
     /**
-     * @param string $selectedIndex
-     * @param string $query
-     * @param array  $searchParameters
-     * @param array $ORMFilters This argument is used to filter ORM objects prior to returning the results as a PaginatedList
+     * @param array<string, mixed> $searchParameters
+     * @param array<string, mixed> $ORMFilters Filters applied to ORM results before assembling the PaginatedList.
      *
-     * @return PaginatedList
+     * @return PaginatedList<ArrayList<DataObject>|ArrayList<object>, DataObject>
      */
-    public function fetchResults($selectedIndex = null, $query = '', $searchParameters = [], $ORMFilters = [])
-    {
+    public function fetchResults(
+        ?string $selectedIndex = null,
+        string $query = '',
+        array $searchParameters = [],
+        array $ORMFilters = [],
+    ): PaginatedList {
         $service = Injector::inst()->get(AlgoliaService::class);
         $results = false;
 
         if (!$selectedIndex) {
-            if (!function_exists('array_key_first')) {
-                function array_key_first(array $arr)
-                {
-                    foreach ($arr as $key => $unused) {
-                        return $key;
-                    }
-                    return null;
-                }
+            $picked = array_key_first($service->indexes);
+            if ($picked === null) {
+                return PaginatedList::create(ArrayList::create());
             }
-
-            $selectedIndex = array_key_first($service->indexes);
+            $selectedIndex = (string) $picked;
         }
 
         try {
-            $selectedIndex = $service->environmentizeIndex($selectedIndex);
-            $index = $service->getSearchClient()->initIndex($selectedIndex);
+            $selectedIndexEnvironment = $service->environmentizeIndex($selectedIndex);
+            $index = $service->getSearchClient()->initIndex($selectedIndexEnvironment);
             $results = $index->search($query, $searchParameters);
         } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
@@ -82,7 +81,7 @@ class AlgoliaQuerier
             }
         }
 
-        $this->lastResult = $results;
+        $this->lastResult = is_array($results) ? $results : null;
 
         if (!empty($ORMFilters)) {
             $records = $records->filter($ORMFilters);
@@ -102,9 +101,9 @@ class AlgoliaQuerier
     }
 
     /**
-     * @return array|null
+     * @return array<string, mixed>|null
      */
-    public function getLastResult()
+    public function getLastResult(): ?array
     {
         return $this->lastResult;
     }

@@ -39,17 +39,14 @@ class AlgoliaDeleteItemJob extends AbstractQueuedJob implements QueuedJob
         );
     }
 
-    /**
-     * @return int
-     */
-    public function getJobType()
+    public function getJobType(): string
     {
         $this->totalSteps = 1;
 
         return QueuedJob::IMMEDIATE;
     }
 
-    public function process()
+    public function process(): void
     {
         try {
             $indexer = Injector::inst()->create(AlgoliaIndexer::class);

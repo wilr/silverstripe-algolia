@@ -11,6 +11,7 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 use Throwable;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
 use Wilr\SilverStripe\Algolia\Tasks\AlgoliaReindex;
+use Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension;
 
 /**
  * Reindex everything via a queued job (when AlgoliaReindex task won't do). This
@@ -21,38 +22,33 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
     use Configurable;
 
     /**
-     * An optional array of default filters to apply when doing the reindex
-     * i.e for indexing Page subclasses you may wish to exclude expired pages.
-     *
      * @config
+     *
+     * @var array<string, mixed>
      */
-    private static $reindexing_default_filters = [];
+    private static array $reindexing_default_filters = [];
 
     /**
      * @config
      */
-    private static $use_batching = true;
+    private static bool $use_batching = true;
 
-    public function __construct($params = array())
-    {
-    }
-
-    public function getTitle()
+    public function getTitle(): string
     {
         return 'Algolia re-indexing all records';
     }
 
-    public function getJobType()
+    public function getJobType(): string
     {
         return QueuedJob::QUEUED;
     }
 
-    public function setup()
+    public function setup(): void
     {
         parent::setup();
 
-        $algoliaService = Injector::inst()->create(AlgoliaService::class);
-        $task = new AlgoliaReindex();
+        $algoliaService = Injector::inst()->get(AlgoliaService::class);
+        $task = AlgoliaReindex::create();
 
         $this->totalSteps = 0;
         $this->currentStep = 0;
@@ -60,7 +56,8 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
         $indexData = [];
 
         $filters = $this->config()->get('reindexing_default_filters');
-        $batchSize = $task->config()->get('batch_size');
+        $batchCfg = $task->config()->get('batch_size');
+        $batchSize = max(1, (int) $batchCfg);
         $batching = $this->config()->get('use_batching');
 
         // find all classes we have to index and add them to the indexData map
@@ -68,7 +65,7 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
         // and process simply handles one batch at a time.
         foreach ($algoliaService->indexes as $indexName => $index) {
             $classes = (isset($index['includeClasses'])) ? $index['includeClasses'] : null;
-            $indexFilters = (isset($index['includeFilters'])) ? $index['includeFilters'] : null;
+            $indexFilters = (isset($index['includeFilters'])) ? $index['includeFilters'] : [];
 
             if ($classes) {
                 foreach ($classes as $class) {
@@ -92,18 +89,28 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
                                 ];
                             }
                         }
-                        $this->addMessage('[' . $indexName . '] Indexing ' . count($ids) . ' ' . $class . ' instances with filters: ' . ($filter ?: '(none)'));
+                        $filterShown = ($filter ?: '(none)');
+                        $this->addMessage(sprintf(
+                            '[%s] Indexing %d %s instances with filters: %s',
+                            $indexName,
+                            count($ids),
+                            $class,
+                            $filterShown
+                        ));
                     } else {
-                        $this->addMessage('[' . $indexName . '] 0 ' . $class . ' instances to index with filters: ' . ($filter ?: '(none) - skipping.'));
+                        $emptyFilterShown = ($filter ?: '(none) - skipping.');
+                        $this->addMessage(sprintf(
+                            '[%s] 0 %s instances to index with filters: %s',
+                            $indexName,
+                            $class,
+                            $emptyFilterShown
+                        ));
                     }
                 }
             }
         }
         $this->totalSteps += count($indexData);
         // Store in jobData to get written to the job descriptor in DB
-        if (!$this->jobData) {
-            $this->jobData = new stdClass();
-        }
         $this->jobData->IndexData = $indexData;
     }
 
@@ -122,42 +129,61 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
      * ]
      * We process one step / batch / id per call.
      */
-    public function process()
+    public function process(): void
     {
         if ($this->currentStep >= $this->totalSteps) {
             $this->isComplete = true;
             $this->addMessage('Done!');
+
             return;
         }
+
         $indexData = isset($this->jobData->IndexData) ? $this->jobData->IndexData : null;
-        if (!isset($indexData[$this->currentStep])) {
+        if ($indexData === null || !isset($indexData[$this->currentStep])) {
             $this->isComplete = true;
-            $this->addMessage('Somehow we ran out of job data before all steps were processed. So we will assume we are done!');
-            $this->addMessage('Dumping out the jop data for debug purposes: ' . json_encode($indexData));
+            $this->addMessage(
+                'Somehow we ran out of job data before all steps were processed. So we will assume we are done!'
+            );
+            $this->addMessage(
+                'Dumping out the jop data for debug purposes: ' . json_encode($indexData)
+            );
+
             return;
         }
 
         $stepData = $indexData[$this->currentStep];
         $class = $stepData['class'];
 
+        $errors = [];
+        $task = null;
+
         try {
-            $task = new AlgoliaReindex();
+            $task = AlgoliaReindex::create();
 
             if (isset($stepData['ids'])) {
-                $summary = $task->indexItems($stepData['indexName'], DataObject::get($class)->filter('ID', $stepData['ids']), false);
-                $this->addMessage($summary);
+                $items = DataObject::get($class)->filter('ID', $stepData['ids']);
+                $summary = $task->indexItems((string) $stepData['indexName'], $items, null);
+
+                if (is_string($summary)) {
+                    $this->addMessage($summary);
+                }
             } else {
-                $item = DataObject::get($class)->byID($stepData['id']);
+                $item = DataObject::get($class)->byID((int) $stepData['id']);
+
                 if ($item) {
-                    if (min($item->invokeWithExtensions('canIndexInAlgolia')) === false) {
-                        $this->addMessage('Skipped indexing ' . $class . ' ' . $item->ID);
+                    if (AlgoliaObjectExtension::shouldBlockIndexingForAlgolia($item)) {
+                        $this->addMessage(sprintf('Skipped indexing %s %s', $class, (string) $item->ID));
                     } elseif ($task->indexItem($item)) {
-                        $this->addMessage('Successfully indexed ' . $class . ' ' . $item->ID);
+                        $this->addMessage(sprintf('Successfully indexed %s %s', $class, (string) $item->ID));
                     } else {
-                        $this->addMessage('Error indexing ' . $class . ' ' . $item->ID);
+                        $this->addMessage(sprintf('Error indexing %s %s', $class, (string) $item->ID));
                     }
                 } else {
-                    $this->addMessage('Error indexing ' . $class . ' ' . $stepData['id'] . ' - failed to load item from DB');
+                    $this->addMessage(sprintf(
+                        'Error indexing %s %s - failed to load item from DB',
+                        $class,
+                        (string) $stepData['id']
+                    ));
                 }
             }
 
@@ -166,9 +192,11 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
             $errors[] = $e->getMessage();
         }
 
-        if (!empty($errors)) {
+        if ($errors !== []) {
             $this->addMessage(implode(', ', $errors));
-            $task->clearErrors();
+            if ($task !== null) {
+                $task->clearErrors();
+            }
         }
 
         $this->currentStep++;

@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Extensions;
 
+use SilverStripe\CMS\Model\VirtualPage;
 use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Model\List\ArrayList;
@@ -9,12 +10,24 @@ use SilverStripe\Model\List\Map;
 use SilverStripe\Subsites\Model\Subsite;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 
+/**
+ * @extends Extension<VirtualPage>
+ */
 class SubsitesVirtualPageExtension extends Extension
 {
-    public function exportObjectToAlgolia($toIndex)
+    /**
+     * @param array<string, mixed> $toIndex
+     */
+    public function exportObjectToAlgolia(array $toIndex): Map
     {
         if (!class_exists(Subsite::class)) {
-            return $toIndex;
+            $attributes = new Map(ArrayList::create());
+
+            foreach ($toIndex as $k => $v) {
+                $attributes->push($k, $v);
+            }
+
+            return $attributes;
         }
         $attributes = new Map(ArrayList::create());
 
@@ -34,15 +47,30 @@ class SubsitesVirtualPageExtension extends Extension
         $result = Subsite::withDisabledSubsiteFilter(function () use ($owner, $attributes, $indexer) {
             $originalObject = $owner->CopyContentFrom();
 
-            if (!$originalObject) {
+            if (!$originalObject->exists()) {
                 return $attributes;
             }
 
             $attributes->push('objectClassName', $originalObject->ClassName);
-            $attributes->push('objectSubsiteID', $this->owner->SubsiteID);
+            $attributes->push('objectSubsiteID', $owner->SubsiteID);
 
-            $specs = $originalObject->config()->get('algolia_index_fields');
-            $attributes = $indexer->addSpecsToAttributes($originalObject, $attributes, $specs);
+            $specsRaw = $originalObject->config()->get('algolia_index_fields');
+
+            $specStrings = [];
+
+            if (is_iterable($specsRaw)) {
+                foreach ($specsRaw as $fieldSpec) {
+                    if (!is_scalar($fieldSpec)) {
+                        continue;
+                    }
+
+                    $specStrings[] = (string) $fieldSpec;
+                }
+            }
+
+            if ($specStrings !== []) {
+                $attributes = $indexer->addSpecsToAttributes($originalObject, $attributes, $specStrings);
+            }
 
             $originalObject->invokeWithExtensions('updateAlgoliaAttributes', $attributes);
 

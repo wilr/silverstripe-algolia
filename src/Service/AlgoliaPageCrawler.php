@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Controllers\ModelAsController;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Controller;
+use SilverStripe\ORM\DataObject;
 use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Control\Session;
 use SilverStripe\Core\Config\Config;
@@ -73,28 +74,29 @@ class AlgoliaPageCrawler
         'ul'
     ];
 
-    private $item;
+    private ?DataObject $item = null;
 
-    private static $content_cutoff_bytes = 100000;
+
+    /**
+     * @config
+     */
+    private static int $content_cutoff_bytes = 100000;
 
     /**
      * Defines the xpath selector for the first element of content
      * that should be indexed. If blank, defaults to the `main` element
      *
      * @config
-     * @var string
      */
-    private static $content_xpath_selector = '';
+    private static string $content_xpath_selector = '';
 
     /**
      * @config
-     *
-     * @var string
      */
-    private static $content_element_tag = 'main';
+    private static string $content_element_tag = 'main';
 
 
-    public function __construct($item)
+    public function __construct(?DataObject $item = null)
     {
         $this->item = $item;
     }
@@ -138,29 +140,32 @@ class AlgoliaPageCrawler
             $controller->pushCurrent();
         }
 
-        $page = '';
         $output = '';
 
         try {
-            /** @var DBHTMLText $page */
-            $page = $controller->render();
-            if ($page) {
+            $renderedContent = $controller->render();
+
+            $pageText = '';
+
+            if ($renderedContent->exists()) {
                 libxml_use_internal_errors(true);
                 $html5 = new HTML5();
 
-                $dom = $html5->loadHTML($page->forTemplate());
+                $dom = $html5->loadHTML($renderedContent->forTemplate());
 
                 if ($useXpath) {
                     $xpath = new DOMXPath($dom);
-                    $nodes = $xpath->query($selector);
+                    $nodes = $xpath->query((string) $selector);
                 } else {
-                    $nodes = $dom->getElementsByTagName($selector);
+                    $nodes = $dom->getElementsByTagName((string) $selector);
                 }
 
                 if (isset($nodes[0])) {
-                    $output = $this->processMainContent($this->extractNodeText($nodes[0]));
+                    $pageText = $this->processMainContent($this->extractNodeText($nodes[0]));
                 }
             }
+
+            $output = $pageText;
         } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
         }
@@ -188,15 +193,14 @@ class AlgoliaPageCrawler
     private function processMainContent($content): string
     {
         // Clean up the DOM content
-        $content = preg_replace('/\s+/', ' ', $content);
-        $content = trim($content);
+        $collapsed = preg_replace('/\s+/', ' ', $content);
+        $content = trim(is_string($collapsed) ? $collapsed : $content);
 
         // set cutoff to allow room for other fields
-        $cutoff = $this->config()->get('content_cutoff_bytes') - 20000;
-
-        // If content is still too large, truncate it
-        if (strlen($content) >= $cutoff) {
-            $content = mb_strcut($content, 0, $cutoff);
+        $cutoffCfg = $this->config()->get('content_cutoff_bytes');
+        $contentCutoffThreshold = max(21000, (int) $cutoffCfg - 20000);
+        if (strlen($content) >= $contentCutoffThreshold) {
+            $content = mb_strcut($content, 0, $contentCutoffThreshold);
         }
 
         return $content;

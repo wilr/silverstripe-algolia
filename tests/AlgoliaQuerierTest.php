@@ -39,4 +39,47 @@ class AlgoliaQuerierTest extends SapphireTest
 
         $this->assertInstanceOf(PaginatedList::class, $results);
     }
+
+    public function testGetLastResultReturnsSearchPayload(): void
+    {
+        $querier = Injector::inst()->get(AlgoliaQuerier::class);
+        $querier->fetchResults('testIndex', 'needle');
+
+        $this->assertIsArray($querier->getLastResult());
+    }
+
+    public function testFetchResultsUsesFirstConfiguredIndexWhenNameIsNull(): void
+    {
+        $querier = Injector::inst()->get(AlgoliaQuerier::class);
+        $results = $querier->fetchResults(null, 'query');
+
+        $this->assertInstanceOf(PaginatedList::class, $results);
+    }
+
+    public function testFetchResultsHydratesHitsAndAppliesOrmFilters(): void
+    {
+        $this->logInWithPermission('ADMIN');
+
+        $obj = AlgoliaTestObject::create();
+        $obj->Active = true;
+        $obj->Title = 'UniqueHitTitle';
+        $obj->write();
+
+        Injector::inst()->registerService(new TestAlgoliaServiceSearchHit(), AlgoliaService::class);
+        TestAlgoliaServiceIndexWithHit::$objectSilverstripeId = (int) $obj->ID;
+
+        $querier = Injector::inst()->get(AlgoliaQuerier::class);
+        $page = $querier->fetchResults('testIndex', 'needle', [], ['Title' => 'UniqueHitTitle']);
+
+        $this->assertSame(1, $page->getTotalItems());
+        $this->assertCount(1, $page->toArray());
+    }
+
+    protected function tearDown(): void
+    {
+        Injector::inst()->registerService(new TestAlgoliaService(), AlgoliaService::class);
+        TestAlgoliaServiceIndexWithHit::$objectSilverstripeId = 0;
+
+        parent::tearDown();
+    }
 }

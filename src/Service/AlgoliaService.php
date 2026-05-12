@@ -3,6 +3,7 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\SearchClient;
+use Algolia\AlgoliaSearch\SearchIndex;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\Environment;
@@ -10,6 +11,7 @@ use SilverStripe\Core\Injector\Injectable;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\Debug;
 use SilverStripe\Security\Security;
+use SilverStripe\ORM\DataObject;
 use Throwable;
 use Exception;
 
@@ -17,65 +19,72 @@ class AlgoliaService
 {
     use Injectable;
 
-    public $adminApiKey = '';
+    public string $adminApiKey = '';
 
-    public $searchApiKey = '';
+    public string $searchApiKey = '';
 
-    public $applicationId = '';
+    public string $applicationId = '';
 
-    public $indexes = [];
+    /** @var array<string, mixed> */
+    public array $indexes = [];
 
-    protected $client;
+    protected ?SearchClient $client = null;
 
-    protected $preloadedIndexes = [];
+    /** @var array<string, SearchIndex> */
+    protected array $preloadedIndexes = [];
 
     /**
      * @return \Algolia\AlgoliaSearch\SearchClient
      */
-    public function getClient()
+    public function getClient(): SearchClient
     {
-        if (!$this->client) {
-            if (!$this->adminApiKey) {
-                throw new Exception('No adminApiKey configured for ' . self::class);
-            }
-
-            if (!$this->applicationId) {
-                throw new Exception('No applicationId configured for ' . self::class);
-            }
-
-            $this->client = SearchClient::create(
-                $this->applicationId,
-                $this->adminApiKey
-            );
+        $existing = $this->client;
+        if ($existing instanceof SearchClient) {
+            return $existing;
         }
 
-        return $this->client;
+        if (!$this->adminApiKey) {
+            throw new Exception('No adminApiKey configured for ' . self::class);
+        }
+
+        if (!$this->applicationId) {
+            throw new Exception('No applicationId configured for ' . self::class);
+        }
+
+        $client = SearchClient::create($this->applicationId, $this->adminApiKey);
+        $this->client = $client;
+
+        return $client;
     }
 
     /**
      * @return \Algolia\AlgoliaSearch\SearchClient
      */
-    public function getSearchClient()
+    public function getSearchClient(): SearchClient
     {
-        if (!$this->client) {
-            if (!$this->searchApiKey) {
-                throw new Exception('No searchApiKey configured for ' . self::class);
-            }
-
-            if (!$this->applicationId) {
-                throw new Exception('No applicationId configured for ' . self::class);
-            }
-
-            $this->client = SearchClient::create(
-                $this->applicationId,
-                $this->searchApiKey
-            );
+        $existing = $this->client;
+        if ($existing instanceof SearchClient) {
+            return $existing;
         }
 
-        return $this->client;
+        if (!$this->searchApiKey) {
+            throw new Exception('No searchApiKey configured for ' . self::class);
+        }
+
+        if (!$this->applicationId) {
+            throw new Exception('No applicationId configured for ' . self::class);
+        }
+
+        $client = SearchClient::create($this->applicationId, $this->searchApiKey);
+        $this->client = $client;
+
+        return $client;
     }
 
-    public function getIndexes($excludeReplicas = true)
+    /**
+     * @return array<string, mixed>
+     */
+    public function getIndexes(bool $excludeReplicas = true): array
     {
         if (!$excludeReplicas) {
             return $this->indexes;
@@ -104,7 +113,7 @@ class AlgoliaService
     }
 
 
-    public function getIndexByName($name)
+    public function getIndexByName(string $name): SearchIndex
     {
         $indexes = $this->initIndexes();
 
@@ -120,15 +129,11 @@ class AlgoliaService
 
 
     /**
-     * Returns an array of all the indexes which need the given item or item
-     * class. If no item provided, returns a list of all the indexes defined.
-     *
-     * @param DataObject|string|null $item
-     * @param bool $excludeReplicas
-     *
-     * @return \Algolia\AlgoliaSearch\SearchIndex[]
+     * @param DataObject|string|array<string, mixed>|null $item
+     *    Instance, class-string, legacy stub array, or null to warm every configured index handle.
+     * @return array<string, SearchIndex>
      */
-    public function initIndexes($item = null, $excludeReplicas = true)
+    public function initIndexes(DataObject|string|array|null $item = null, bool $excludeReplicas = true): array
     {
         if (!Security::database_is_ready()) {
             return [];
@@ -136,10 +141,6 @@ class AlgoliaService
 
         try {
             $client = $this->getClient();
-
-            if (!$client) {
-                return [];
-            }
         } catch (Throwable $e) {
             Injector::inst()->get(LoggerInterface::class)->error($e);
 
@@ -166,9 +167,19 @@ class AlgoliaService
         }
 
         if (is_string($item)) {
-            $item = Injector::inst()->get($item);
+            $resolved = Injector::inst()->get($item);
+            $item = $resolved instanceof DataObject ? $resolved : null;
         } elseif (is_array($item)) {
-            $item = Injector::inst()->get($item['objectClassName']);
+            if (!isset($item['objectClassName']) || !is_string($item['objectClassName'])) {
+                return [];
+            }
+
+            $resolved = Injector::inst()->get($item['objectClassName']);
+            $item = $resolved instanceof DataObject ? $resolved : null;
+        }
+
+        if (!$item instanceof DataObject) {
+            return [];
         }
 
         $matches = [];
@@ -232,7 +243,7 @@ class AlgoliaService
      *
      * @return string
      */
-    public function environmentizeIndex($indexName)
+    public function environmentizeIndex(string $indexName): string
     {
         $prefix = Environment::getEnv('ALGOLIA_PREFIX_INDEX_NAME');
 

@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Tests;
 
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\ORM\DataObjectSchema;
@@ -75,5 +76,66 @@ class AlgoliaIndexerTest extends SapphireTest
         $deleted = $indexer->deleteItem(AlgoliaTestObject::class, 9999999);
 
         return $this->assertTrue($deleted);
+    }
+
+    public function testIndexItemPersistsToMockIndex(): void
+    {
+        $object = AlgoliaTestObject::create();
+        $object->Title = 'Indexed';
+        $object->Active = true;
+        $object->write();
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $this->assertTrue($indexer->indexItem($object));
+
+        $remote = $indexer->getObject($object);
+        $this->assertNotEmpty($remote);
+    }
+
+    public function testIndexItemsSavesBatchToMock(): void
+    {
+        $one = AlgoliaTestObject::create();
+        $one->Active = true;
+        $one->Title = 'One';
+        $one->write();
+
+        $two = AlgoliaTestObject::create();
+        $two->Active = true;
+        $two->Title = 'Two';
+        $two->write();
+
+        $list = AlgoliaTestObject::get()->filter('ID', [$one->ID, $two->ID])->sort('ID');
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $indexer->indexItems($list);
+
+        $this->assertNotEmpty($indexer->getObject($one));
+        $this->assertNotEmpty($indexer->getObject($two));
+    }
+
+    public function testExportAttributesIncludesManyManyRelationship(): void
+    {
+        Config::modify()->merge(AlgoliaTestObject::class, 'algolia_index_fields', [
+            'RelatedTestObjects',
+        ]);
+
+        $related = AlgoliaTestObject::create();
+        $related->Active = true;
+        $related->Title = 'Related';
+        $related->write();
+
+        $parent = AlgoliaTestObject::create();
+        $parent->Active = true;
+        $parent->Title = 'Parent';
+        $parent->write();
+        $parent->RelatedTestObjects()->add($related);
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $map = $indexer->exportAttributesFromObject($parent);
+        $data = $map->toArray();
+
+        $this->assertArrayHasKey('RelatedTestObjects', $data);
+        $this->assertIsArray($data['RelatedTestObjects']);
+        $this->assertNotEmpty($data['RelatedTestObjects']);
     }
 }

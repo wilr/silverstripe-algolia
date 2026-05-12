@@ -8,16 +8,18 @@ use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\Dev\Debug;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
-use SilverStripe\Model\List\Map;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\PolyExecution\PolyOutput;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Throwable;
+use Wilr\SilverStripe\Algolia\Extensions\AlgoliaObjectExtension;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaIndexer;
 use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
+use Wilr\SilverStripe\Algolia\Tasks\Concerns\UsesAlgoliaQuietOption;
 
 /**
  * Bulk reindex all objects. Note that this should be run via cli, if you can,
@@ -25,26 +27,36 @@ use Wilr\SilverStripe\Algolia\Service\AlgoliaService;
  */
 class AlgoliaReindex extends BuildTask
 {
+    use UsesAlgoliaQuietOption;
+
     protected static string $commandName = 'algolia-index';
 
     protected string $title = 'Algolia Reindex';
 
     protected static string $description = 'Reindex objects to Algolia';
 
-    private static $batch_size = 20;
+    private static int $batch_size = 20;
 
     /**
      * An optional array of default filters to apply when doing the reindex
      * i.e for indexing Page subclasses you may wish to exclude expired pages.
      *
      * @config
+     *
+     * @var array<string, mixed>
      */
-    private static $reindexing_default_filters = [];
+    private static array $reindexing_default_filters = [];
 
-    protected $errors = [];
+
+    /**
+     * @var array<int, string>
+     */
+    protected array $errors = [];
 
     protected function execute(InputInterface $input, PolyOutput $output): int
     {
+        $this->applyQuietFromInput($input, $output);
+
         Environment::increaseMemoryLimitTo();
         Environment::increaseTimeLimitTo();
 
@@ -73,9 +85,7 @@ class AlgoliaReindex extends BuildTask
             $subsite = $input->getOption('subsite');
         }
 
-        /** @var AlgoliaService */
         $algoliaService = Injector::inst()->create(AlgoliaService::class);
-
         if ($input->getOption('clear')) {
             $indexes = $algoliaService->initIndexes();
 
@@ -94,29 +104,46 @@ class AlgoliaReindex extends BuildTask
             $indexFilters = (isset($index['includeFilter'])) ? $index['includeFilter'] : [];
 
             if ($classes) {
-                foreach ($classes as $candidate) {
-                    if ($targetClass && $targetClass !== $candidate) {
-                        // check to see if target class is a subclass of the candidate
-                        if (!is_subclass_of($targetClass, $candidate)) {
-                            continue;
-                        } else {
-                            $candidate = $targetClass;
-                        }
+                foreach ($classes as $configuredCandidate) {
+                    if (!$this->looksLikeConfiguredDataObjectSubclass($configuredCandidate)) {
+                        continue;
                     }
 
 
-                    $items = $this->getItems($candidate, $filter, $indexFilters);
+                    $effectiveCandidate = $configuredCandidate;
+
+                    if ($targetClass !== '' && $targetClass !== $configuredCandidate) {
+                        // check to see if target class is a subclass of the candidate
+                        if (!is_subclass_of($targetClass, $configuredCandidate)) {
+                            continue;
+                        }
+
+                        if (!is_string($targetClass)
+                            || !class_exists($targetClass)
+                            || !is_subclass_of($targetClass, DataObject::class)
+                        ) {
+                            continue;
+                        }
+
+                        $effectiveCandidate = $targetClass;
+                    }
+
+
+                    $items = $this->getItems($effectiveCandidate, $filter, $indexFilters);
 
                     if (!$subsite) {
                         $items = $items->setDataQueryParam('Subsite.filter', false);
                     }
 
-                    $filterLabel = implode(',', array_filter(array_merge([$filter], [$indexFilters[$candidate] ?? ''])));
+                    $indexFilterSnippet = ($indexFilters[$effectiveCandidate] ?? '');
+                    $filterLabel = implode(',', array_filter(
+                        array_merge([$filter], [$indexFilterSnippet])
+                    ));
 
                     $output->writeln(sprintf(
                         '| Found %s %s remaining to index %s',
                         $items->count(),
-                        $candidate,
+                        $effectiveCandidate,
                         $filterLabel ? 'which match filters ' .  $filterLabel : ''
                     ));
 
@@ -138,24 +165,29 @@ class AlgoliaReindex extends BuildTask
             new InputOption('force', null, InputOption::VALUE_NONE, 'Force indexing of all objects'),
             new InputOption('subsite', null, InputOption::VALUE_OPTIONAL, 'Only index objects from this subsite'),
             new InputOption('clear', null, InputOption::VALUE_NONE, 'Clear all indexes before reindexing'),
+            $this->algoliaQuietInputOption(),
         ];
     }
 
     /**
-     * @param string $targetClass
+     * @param class-string<DataObject> $targetClass
      * @param string $filter
-     * @param string[] $indexFilters
+     * @param array<string, mixed> $indexFilters
      *
-     * @return \SilverStripe\ORM\DataList
+     * @return DataList<DataObject>
      */
-    public function getItems($targetClass, $filter = '', $indexFilters = [])
+    public function getItems(string $targetClass, string $filter = '', array $indexFilters = []): DataList
     {
+        if (!class_exists($targetClass) || !is_subclass_of($targetClass, DataObject::class)) {
+            throw new \InvalidArgumentException(sprintf('%s must be a valid DataObject subclass', $targetClass));
+        }
+
         $inst = $targetClass::create();
 
         if ($inst->hasExtension(Versioned::class)) {
-            $items = Versioned::get_by_stage($targetClass, 'Live', $filter);
+            $items = Versioned::get_by_stage($targetClass, Versioned::LIVE, $filter);
         } else {
-            $items = $inst::get();
+            $items = $targetClass::get();
 
             if ($filter) {
                 $items = $items->where($filter);
@@ -172,44 +204,38 @@ class AlgoliaReindex extends BuildTask
 
 
     /**
-     * @param DataObject $obj
-     *
      * @return bool
      */
-    public function indexItem($obj = null): bool
+    public function indexItem(?DataObject $obj = null): bool
     {
         if (!$obj) {
             return false;
-        } elseif (min($obj->invokeWithExtensions('canIndexInAlgolia')) === false) {
-            return false;
-        } else {
-            if (!$obj->AlgoliaUUID) {
-                $obj->assignAlgoliaUUID();
-            }
-
-            if ($obj->doImmediateIndexInAlgolia()) {
-                return true;
-            } else {
-                return false;
-            }
         }
+
+        if (AlgoliaObjectExtension::shouldBlockIndexingForAlgolia($obj)) {
+            return false;
+        }
+
+        if (!$obj->AlgoliaUUID) {
+            AlgoliaObjectExtension::runAssignAlgoliaUuid($obj);
+        }
+
+        return AlgoliaObjectExtension::runDoImmediateIndexInAlgolia($obj);
     }
 
 
     /**
-     * @param string $indexName
-     * @param DataList? $items
-     * @param PolyOutput $output;
+     * @param DataList<DataObject>|null $items
      *
-     * @return bool|string
+     * @return bool|string Summary text, or false when there is nothing to index
      */
-    public function indexItems($indexName, $items, PolyOutput $output)
+    public function indexItems(string $indexName, ?DataList $items = null, ?PolyOutput $output = null): bool|string
     {
         $algoliaService = Injector::inst()->get(AlgoliaService::class);
         $count = 0;
         $skipped = 0;
-        $total = ($items) ? $items->count() : 0;
-        $batchSize = $this->config()->get('batch_size') ?? 25;
+        $total = ($items instanceof DataList) ? $items->count() : 0;
+        $batchSize = max(1, (int) $this->config()->get('batch_size'));
         $batchesTotal = ($total > 0) ? (ceil($total / $batchSize)) : 0;
         $indexer = Injector::inst()->get(AlgoliaIndexer::class);
         $pos = 0;
@@ -226,7 +252,7 @@ class AlgoliaReindex extends BuildTask
             foreach ($limitedSize as $item) {
                 $pos++;
 
-                if ($output) {
+                if ($output && !$output->isQuiet() && !$output->isSilent()) {
                     if ($pos % 50 == 0) {
                         $output->writeln(sprintf('[%s/%s]', $pos, $total));
                     } else {
@@ -237,7 +263,7 @@ class AlgoliaReindex extends BuildTask
                 // fetch the actual instance
                 $instance = DataObject::get($item->ClassName)->setUseCache(true)->byID($item->ID);
 
-                if (!$instance || min($instance->invokeWithExtensions('canIndexInAlgolia')) == false) {
+                if (!$instance || AlgoliaObjectExtension::shouldBlockIndexingForAlgolia($instance)) {
                     $skipped++;
 
                     continue;
@@ -245,24 +271,20 @@ class AlgoliaReindex extends BuildTask
 
                 // Set AlgoliaUUID, in case it wasn't previously set
                 if (!$item->AlgoliaUUID) {
-                    $item->assignAlgoliaUUID();
+                    AlgoliaObjectExtension::runAssignAlgoliaUuid($item);
                 }
 
-                $batchKey = get_class($item);
+                $batchKey = $item::class;
 
                 if (!isset($currentBatches[$batchKey])) {
                     $currentBatches[$batchKey] = [];
                 }
 
                 try {
-                    $data = $indexer->exportAttributesFromObject($item);
-
-                    if ($data instanceof Map) {
-                        $data = $data->toArray();
-                    }
+                    $data = $indexer->exportAttributesFromObject($item)->toArray();
 
                     $currentBatches[$batchKey][] = $data;
-                    $item->touchAlgoliaIndexedDate();
+                    AlgoliaObjectExtension::runTouchAlgoliaIndexedDate($item);
                     $count++;
                 } catch (Throwable $e) {
                     Injector::inst()->get(LoggerInterface::class)->warning($e->getMessage());
@@ -274,7 +296,7 @@ class AlgoliaReindex extends BuildTask
                     unset($currentBatches[$batchKey]);
                 }
 
-                if ($output) {
+                if ($output && !$output->isQuiet() && !$output->isSilent()) {
                     sleep(1);
                 }
             }
@@ -284,7 +306,7 @@ class AlgoliaReindex extends BuildTask
             if (count($currentBatches[$class]) > 0) {
                 $this->indexBatch($indexName, $currentBatches[$class]);
 
-                if ($output) {
+                if ($output && !$output->isQuiet() && !$output->isSilent()) {
                     sleep(1);
                 }
             }
@@ -298,7 +320,7 @@ class AlgoliaReindex extends BuildTask
             $skipped
         );
 
-        if ($output) {
+        if ($output && !$output->isQuiet() && !$output->isSilent()) {
             $output->writeln($summary);
 
             $output->writeln(sprintf(
@@ -313,13 +335,9 @@ class AlgoliaReindex extends BuildTask
     }
 
     /**
-     * Index a batch of changes
-     *
-     * @param array $items
-     *
-     * @return bool
+     * @param list<array<string, mixed>> $items
      */
-    public function indexBatch($indexName, $items): bool
+    public function indexBatch(string $indexName, array $items): bool
     {
         $service = Injector::inst()->create(AlgoliaService::class);
         $index = $service->getIndexByName($indexName);
@@ -348,17 +366,24 @@ class AlgoliaReindex extends BuildTask
     }
 
     /**
-     * @return string[]
+     * @return list<string>
      */
-    public function getErrors()
+    public function getErrors(): array
     {
-        return $this->errors;
+        return array_values($this->errors);
     }
 
     /**
-     * @return $this
+     * @param mixed $configuredCandidate Candidate class name from Algolia YAML entry.
      */
-    public function clearErrors()
+    private function looksLikeConfiguredDataObjectSubclass(mixed $configuredCandidate): bool
+    {
+        return is_string($configuredCandidate)
+            && class_exists($configuredCandidate)
+            && is_subclass_of($configuredCandidate, DataObject::class);
+    }
+
+    public function clearErrors(): static
     {
         $this->errors = [];
 

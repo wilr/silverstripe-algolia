@@ -37,9 +37,10 @@ class AlgoliaPageCrawlerTest extends TestCase
 
     public function testScriptStyleAndNoscriptContentIsIgnored(): void
     {
-        $content = $this->extractFromMain(
-            '<p>Visible</p><script>alert("x")</script><style>.x{display:none;}</style><noscript>No JS</noscript><p>Content</p>'
-        );
+        $html = '<p>Visible</p><script>alert("x")</script>';
+        $html .= '<style>.x{display:none;}</style><noscript>No JS</noscript><p>Content</p>';
+
+        $content = $this->extractFromMain($html);
 
         $this->assertSame('Visible Content', $content);
     }
@@ -76,8 +77,17 @@ class AlgoliaPageCrawlerTest extends TestCase
         $mainNode = $dom->getElementsByTagName('main')->item(0);
 
         $extractMethod = new ReflectionMethod(AlgoliaPageCrawler::class, 'extractNodeText');
-        $extractMethod->setAccessible(true);
 
         return preg_replace('/\s+/', ' ', trim($extractMethod->invoke($crawler, $mainNode)));
+    }
+
+    public function testProcessMainContentNormalisesWhitespace(): void
+    {
+        $crawler = new AlgoliaPageCrawler(null);
+        $method = new ReflectionMethod(AlgoliaPageCrawler::class, 'processMainContent');
+
+        $output = $method->invoke($crawler, "line  one  \n\tline  two");
+
+        $this->assertSame('line one line two', $output);
     }
 }

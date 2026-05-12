@@ -2,6 +2,7 @@
 
 namespace Wilr\SilverStripe\Algolia\Tests;
 
+use SilverStripe\Core\Environment;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\Dev\SapphireTest;
 use SilverStripe\ORM\DataObjectSchema;
@@ -102,5 +103,40 @@ class AlgoliaServiceTest extends SapphireTest
 
         $this->assertEquals(['testIndexTestObjects'], array_keys($service->initIndexes($testObj)));
         $this->assertEquals(['testIndexTestObjectsNamedTed'], array_keys($service->initIndexes($testObj2)));
+    }
+
+    public function testEnvironmentizeIndexUsesAlgoliaPrefixWhenEnvSet(): void
+    {
+        Environment::setEnv('ALGOLIA_PREFIX_INDEX_NAME', 'customprefix');
+
+        $service = Injector::inst()->create(AlgoliaService::class);
+        $this->assertSame('customprefix_pages', $service->environmentizeIndex('pages'));
+
+        Environment::setEnv('ALGOLIA_PREFIX_INDEX_NAME', false);
+    }
+
+    public function testGetIndexByNameThrowsForUnknownIndex(): void
+    {
+        $service = Injector::inst()->create(AlgoliaService::class);
+
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage('not found');
+        $service->getIndexByName('does-not-exist');
+    }
+
+    public function testSyncSettingsCallsAlgoliaForEachConfiguredIndex(): void
+    {
+        $service = Injector::inst()->create(AlgoliaService::class);
+        $service->indexes = [
+            'configured' => [
+                'indexSettings' => [
+                    'searchableAttributes' => [
+                        'title',
+                    ],
+                ],
+            ],
+        ];
+
+        $this->assertTrue($service->syncSettings());
     }
 }
