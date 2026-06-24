@@ -9,8 +9,15 @@ class TestAlgoliaServiceIndex extends SearchIndex implements TestOnly
 {
     private $objects = [];
 
+    /**
+     * @var array<string, mixed>|null
+     */
+    public ?array $lastSettings = null;
+
     public function setSettings($settings, $requestOptions = array())
     {
+        $this->lastSettings = $settings;
+
         return $settings;
     }
 
