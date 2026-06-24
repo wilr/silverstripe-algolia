@@ -229,7 +229,11 @@ class AlgoliaReindex extends BuildTask
      *
      * @return bool|string Summary text, or false when there is nothing to index
      */
-    public function indexItems(string $indexName, ?DataList $items = null, ?PolyOutput $output = null): bool|string
+    public function indexItems(
+        string $indexName,
+        ?DataList $items = null,
+        PolyOutput|false|null $output = null
+    ): bool|string
     {
         $algoliaService = Injector::inst()->get(AlgoliaService::class);
         $count = 0;

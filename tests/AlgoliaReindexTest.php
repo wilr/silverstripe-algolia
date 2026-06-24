@@ -115,6 +115,23 @@ class AlgoliaReindexTest extends SapphireTest
         $this->assertStringContainsString('testIndex', $summary);
     }
 
+    public function testIndexItemsAcceptsFalseOutputForLegacyCallers(): void
+    {
+        $a = AlgoliaTestObject::create();
+        $a->Active = true;
+        $a->Title = 'IdxLegacy';
+        $a->write();
+
+        Config::modify()->set(AlgoliaReindex::class, 'batch_size', 5);
+
+        $task = AlgoliaReindex::create();
+        $list = AlgoliaTestObject::get()->filter('ID', $a->ID);
+        $summary = $task->indexItems('testIndex', $list, false);
+
+        $this->assertIsString($summary);
+        $this->assertStringContainsString('testIndex', $summary);
+    }
+
     public function testAlgoliaReindexItemTaskSuccessPath(): void
     {
         $obj = AlgoliaTestObject::create();

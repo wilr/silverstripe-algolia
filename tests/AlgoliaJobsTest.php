@@ -116,6 +116,7 @@ class AlgoliaJobsTest extends SapphireTest
 
         $refStep = new ReflectionProperty(AbstractQueuedJob::class, 'currentStep');
         $this->assertSame(1, $refStep->getValue($job));
+        $this->assertNotEmpty(AlgoliaTestObject::get()->byID($obj->ID)?->AlgoliaUUID);
 
         $job->process();
         $this->assertTrue($job->jobFinished());
