@@ -139,4 +139,28 @@ class AlgoliaServiceTest extends SapphireTest
 
         $this->assertTrue($service->syncSettings());
     }
+
+    public function testSyncSettingsUsesEnvironmentizeIndexForReplicas(): void
+    {
+        Environment::setEnv('ALGOLIA_PREFIX_INDEX_NAME', 'sandbox');
+
+        $service = Injector::inst()->create(AlgoliaService::class);
+        $service->indexes = [
+            'products' => [
+                'indexSettings' => [
+                    'replicas' => [
+                        'products_newest',
+                    ],
+                ],
+            ],
+        ];
+
+        $this->assertTrue($service->syncSettings());
+
+        $index = $service->getClient()->initIndex('sandbox_products');
+        $this->assertInstanceOf(TestAlgoliaServiceIndex::class, $index);
+        $this->assertSame(['sandbox_products_newest'], $index->lastSettings['replicas']);
+
+        Environment::setEnv('ALGOLIA_PREFIX_INDEX_NAME', false);
+    }
 }
