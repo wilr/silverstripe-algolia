@@ -111,6 +111,9 @@ class AlgoliaReindexAllJob extends AbstractQueuedJob implements QueuedJob
         }
         $this->totalSteps += count($indexData);
         // Store in jobData to get written to the job descriptor in DB
+        if (!$this->jobData) {
+            $this->jobData = new stdClass();
+        }
         $this->jobData->IndexData = $indexData;
     }
 
