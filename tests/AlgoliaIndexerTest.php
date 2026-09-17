@@ -147,6 +147,7 @@ class AlgoliaIndexerTest extends SapphireTest
 
         $object = ExplodingAlgoliaTestObject::create();
         $object->Title = 'Broken';
+        $object->BrokenField = 'Explode';
         $object->OtherField = 'Still exported';
         $object->write();
 
