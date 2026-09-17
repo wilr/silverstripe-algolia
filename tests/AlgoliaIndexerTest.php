@@ -16,7 +16,8 @@ class AlgoliaIndexerTest extends SapphireTest
 
     protected static $extra_dataobjects = [
         AlgoliaTestObject::class,
-        AlgoliaCustomTestObject::class
+        AlgoliaCustomTestObject::class,
+        ExplodingAlgoliaTestObject::class,
     ];
 
     protected static $required_extensions = [
@@ -137,5 +138,37 @@ class AlgoliaIndexerTest extends SapphireTest
         $this->assertArrayHasKey('RelatedTestObjects', $data);
         $this->assertIsArray($data['RelatedTestObjects']);
         $this->assertNotEmpty($data['RelatedTestObjects']);
+    }
+
+    public function testExportAttributesLogsBrokenFieldAndContinues(): void
+    {
+        $logger = new TestLogger();
+        Injector::inst()->registerService($logger, \Psr\Log\LoggerInterface::class);
+
+        $object = ExplodingAlgoliaTestObject::create();
+        $object->Title = 'Broken';
+        $object->OtherField = 'Still exported';
+        $object->write();
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+        $data = $indexer->exportAttributesFromObject($object)->toArray();
+
+        $this->assertArrayNotHasKey('BrokenField', $data);
+        $this->assertSame('Still exported', $data['OtherField']);
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame(
+            sprintf(
+                'Failed to export Algolia attribute "%s" for "%s" #%s',
+                'BrokenField',
+                ExplodingAlgoliaTestObject::class,
+                (string) $object->ID
+            ),
+            $logger->records[0]['message']
+        );
+        $this->assertSame(ExplodingAlgoliaTestObject::class, $logger->records[0]['context']['className']);
+        $this->assertSame($object->ID, $logger->records[0]['context']['id']);
+        $this->assertSame('BrokenField', $logger->records[0]['context']['attribute']);
+        $this->assertInstanceOf(\RuntimeException::class, $logger->records[0]['context']['exception']);
     }
 }

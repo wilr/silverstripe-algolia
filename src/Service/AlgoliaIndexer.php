@@ -231,80 +231,97 @@ class AlgoliaIndexer
         $maxFieldSize = $this->config()->get('max_field_size_bytes');
 
         foreach ($specs as $attributeName) {
-            if (in_array($attributeName, $this->config()->get('attributes_blacklisted'))) {
-                continue;
-            }
-
-            // fetch the db object, or fallback to the getters but prefer
-            // the db object
             try {
-                $dbField = $item->relObject($attributeName);
-            } catch (LogicException $e) {
-                $dbField = $item->{$attributeName};
-            }
+                if (in_array($attributeName, $this->config()->get('attributes_blacklisted'))) {
+                    continue;
+                }
 
-            if (!$dbField) {
-                continue;
-            }
+                // fetch the db object, or fallback to the getters but prefer
+                // the db object
+                try {
+                    $dbField = $item->relObject($attributeName);
+                } catch (LogicException $e) {
+                    $dbField = $item->{$attributeName};
+                }
 
-            if (is_string($dbField) || is_array($dbField)) {
-                $attributes->push($attributeName, $dbField);
-            } elseif ($dbField instanceof DBForeignKey) {
-                $attributes->push($attributeName, $dbField->Value);
-            } elseif ($dbField->exists() || $dbField instanceof DBBoolean) {
-                if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
-                    // has-many, many-many, has-one
-                    $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
-                } else {
-                    // db-field, if it's a date then use the timestamp since we need it
-                    $hasContent = true;
-                    $value = '';
+                if (!$dbField) {
+                    continue;
+                }
 
-                    switch (get_class($dbField)) {
-                        case DBDate::class:
-                        case DBDatetime::class:
-                            $value = $dbField->getTimestamp();
-                            break;
-                        case DBBoolean::class:
-                            $value = $dbField->getValue();
-                            break;
-                        case DBHTMLText::class:
-                            $fieldData = $dbField->Plain();
-                            $fieldLength = mb_strlen($fieldData, '8bit');
+                if (is_string($dbField) || is_array($dbField)) {
+                    $attributes->push($attributeName, $dbField);
+                } elseif ($dbField instanceof DBForeignKey) {
+                    $attributes->push($attributeName, $dbField->Value);
+                } elseif ($dbField->exists() || $dbField instanceof DBBoolean) {
+                    if ($dbField instanceof RelationList || $dbField instanceof DataObject) {
+                        // has-many, many-many, has-one
+                        $this->exportAttributesFromRelationship($item, $attributeName, $attributes);
+                    } else {
+                        // db-field, if it's a date then use the timestamp since we need it
+                        $hasContent = true;
+                        $value = '';
 
-                            if ($fieldLength > $maxFieldSize) {
-                                $maxIterations = 100;
-                                $i = 0;
+                        switch (get_class($dbField)) {
+                            case DBDate::class:
+                            case DBDatetime::class:
+                                $value = $dbField->getTimestamp();
+                                break;
+                            case DBBoolean::class:
+                                $value = $dbField->getValue();
+                                break;
+                            case DBHTMLText::class:
+                                $fieldData = $dbField->Plain();
+                                $fieldLength = mb_strlen($fieldData, '8bit');
 
-                                while ($hasContent && $i < $maxIterations) {
-                                    $block = mb_strcut(
-                                        $fieldData,
-                                        $i * $maxFieldSize,
-                                        $maxFieldSize - 1
-                                    );
+                                if ($fieldLength > $maxFieldSize) {
+                                    $maxIterations = 100;
+                                    $i = 0;
 
-                                    if ($block) {
-                                        $attributes->push($attributeName . '_Block' . $i, $block);
-                                    } else {
-                                        $hasContent = false;
+                                    while ($hasContent && $i < $maxIterations) {
+                                        $block = mb_strcut(
+                                            $fieldData,
+                                            $i * $maxFieldSize,
+                                            $maxFieldSize - 1
+                                        );
+
+                                        if ($block) {
+                                            $attributes->push($attributeName . '_Block' . $i, $block);
+                                        } else {
+                                            $hasContent = false;
+                                        }
+
+                                        $i++;
                                     }
-
-                                    $i++;
+                                    $hasContent = false;
+                                } else {
+                                    $value = $fieldData;
                                 }
-                                $hasContent = false;
-                            } else {
-                                $value = $fieldData;
-                            }
-                            break;
-                        default:
-                            $value = (string) $dbField->forTemplate();
-                            break;
-                    }
+                                break;
+                            default:
+                                $value = (string) $dbField->forTemplate();
+                                break;
+                        }
 
-                    if ($hasContent) {
-                        $attributes->push($attributeName, $value);
+                        if ($hasContent) {
+                            $attributes->push($attributeName, $value);
+                        }
                     }
                 }
+            } catch (Throwable $e) {
+                Injector::inst()->get(LoggerInterface::class)->error(
+                    sprintf(
+                        'Failed to export Algolia attribute "%s" for "%s" #%s',
+                        $attributeName,
+                        get_class($item),
+                        (string) $item->ID
+                    ),
+                    [
+                        'className' => get_class($item),
+                        'id' => $item->ID,
+                        'attribute' => $attributeName,
+                        'exception' => $e,
+                    ]
+                );
             }
         }
 
