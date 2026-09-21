@@ -18,6 +18,7 @@ class AlgoliaIndexerTest extends SapphireTest
         AlgoliaTestObject::class,
         AlgoliaCustomTestObject::class,
         ExplodingAlgoliaTestObject::class,
+        FatalHookAlgoliaTestObject::class,
     ];
 
     protected static $required_extensions = [
@@ -171,5 +172,58 @@ class AlgoliaIndexerTest extends SapphireTest
         $this->assertSame($object->ID, $logger->records[0]['context']['id']);
         $this->assertSame('BrokenField', $logger->records[0]['context']['attribute']);
         $this->assertInstanceOf(\RuntimeException::class, $logger->records[0]['context']['exception']);
+    }
+
+    public function testIndexItemLogsErrorRaisedByAttributeHook(): void
+    {
+        $logger = new TestLogger();
+        Injector::inst()->registerService($logger, \Psr\Log\LoggerInterface::class);
+
+        $object = FatalHookAlgoliaTestObject::create();
+        $object->Title = 'Fatal hook';
+        $object->Broken = true;
+        $object->write();
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+
+        // a PHP Error from the hook must be reported, not escape indexItem()
+        $this->assertFalse($indexer->indexItem($object));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertStringContainsString(
+            sprintf(
+                'Failed to export Algolia payload for "%s" #%s',
+                FatalHookAlgoliaTestObject::class,
+                (string) $object->ID
+            ),
+            (string) $logger->records[0]['message']
+        );
+        $this->assertSame(FatalHookAlgoliaTestObject::class, $logger->records[0]['context']['className']);
+        $this->assertSame($object->ID, $logger->records[0]['context']['id']);
+        $this->assertInstanceOf(\TypeError::class, $logger->records[0]['context']['exception']);
+    }
+
+    public function testIndexItemsSkipsBrokenRecordAndIndexesTheRest(): void
+    {
+        $logger = new TestLogger();
+        Injector::inst()->registerService($logger, \Psr\Log\LoggerInterface::class);
+
+        $broken = FatalHookAlgoliaTestObject::create();
+        $broken->Title = 'Fatal hook';
+        $broken->Broken = true;
+        $broken->write();
+
+        $healthy = FatalHookAlgoliaTestObject::create();
+        $healthy->Title = 'Exports fine';
+        $healthy->write();
+
+        $indexer = Injector::inst()->get(AlgoliaIndexer::class);
+
+        // the broken record is skipped and reported, the batch still completes
+        $indexer->indexItems(FatalHookAlgoliaTestObject::get());
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('error', $logger->records[0]['level']);
+        $this->assertSame($broken->ID, $logger->records[0]['context']['id']);
     }
 }
