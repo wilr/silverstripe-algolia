@@ -3,7 +3,6 @@
 namespace Wilr\SilverStripe\Algolia\Service;
 
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
-use Exception;
 use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Core\Injector\Injector;
@@ -70,8 +69,8 @@ class AlgoliaIndexer
 
         try {
             $fields = $this->exportAttributesFromObject($item);
-        } catch (Exception $e) {
-            Injector::inst()->get(LoggerInterface::class)->error($e);
+        } catch (Throwable $e) {
+            $this->logExportFailure($item, $e);
 
             return false;
         }
@@ -103,6 +102,32 @@ class AlgoliaIndexer
     }
 
     /**
+     * Report a record which could not be exported into an Algolia payload.
+     *
+     * Hooks such as {@link updateAlgoliaAttributes()} run outside the per-attribute
+     * guard in {@link addSpecsToAttributes()}, so a faulty hook can raise anything -
+     * including a PHP Error such as a TypeError. Catch Throwable rather than Exception
+     * so those still reach the logger, and name the record so it can be found.
+     */
+    protected function logExportFailure(DataObject $item, Throwable $e): void
+    {
+        Injector::inst()->get(LoggerInterface::class)->error(
+            sprintf(
+                'Failed to export Algolia payload for "%s" #%s: %s',
+                get_class($item),
+                (string) $item->ID,
+                $e->getMessage()
+            ),
+            [
+                'className' => get_class($item),
+                'id' => $item->ID,
+                'link' => $item->hasMethod('AbsoluteLink') ? $item->AbsoluteLink() : null,
+                'exception' => $e,
+            ]
+        );
+    }
+
+    /**
      * Index multiple items of the same class at a time.
      *
      * @param DataList<DataObject> $items
@@ -114,7 +139,16 @@ class AlgoliaIndexer
         $data = [];
 
         foreach ($items as $item) {
-            $data[] = $this->exportAttributesFromObject($item)->toArray();
+            try {
+                $data[] = $this->exportAttributesFromObject($item)->toArray();
+            } catch (Throwable $e) {
+                // skip the record rather than aborting the rest of the batch
+                $this->logExportFailure($item, $e);
+            }
+        }
+
+        if (!$data) {
+            return $this;
         }
 
         foreach ($searchIndexes as $searchIndex) {
